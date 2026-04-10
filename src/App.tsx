@@ -14,7 +14,8 @@ import Login from './components/Login';
 import NotificationManager from './components/NotificationManager';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import UserManagement from './components/UserManagement';
-import { db, collection, query, orderBy, onSnapshot, handleFirestoreError, OperationType, where } from './firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, handleFirestoreError, OperationType, where } from './firebase';
+import { signInAnonymously } from 'firebase/auth';
 import { type Incident } from './types';
 import { syncOfflineIncidents } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -117,7 +118,55 @@ const MainApp: React.FC = () => {
   }
 
   if (!user) {
-    return <Login />;
+    return (
+      <div className="min-h-screen bg-bg-light flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white rounded-[40px] shadow-2xl p-8 border border-gray-50 mb-8 relative z-10">
+          <div className="bg-white p-3 rounded-[28px] shadow-xl shadow-primary/10 mb-6 inline-block">
+            <img
+              src={LOGO_URL}
+              alt="Logo Defesa Civil Corupá"
+              className="w-20 h-20 object-contain"
+            />
+          </div>
+          <h1 className="text-3xl font-black text-primary tracking-tight mb-2">Defesa Civil</h1>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-8">Corupá - Santa Catarina</p>
+
+          <button
+            onClick={() => signInAnonymously(auth)}
+            className="w-full bg-primary text-white py-5 rounded-2xl font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg"
+          >
+            <AlertCircle className="w-6 h-6" />
+            <span>Registrar Ocorrência</span>
+          </button>
+
+          <div className="mt-8 pt-8 border-t border-gray-100">
+            <button
+              onClick={() => {
+                // Força o componente Login a aparecer se o admin precisar
+                // No futuro pode ser um modal ou rota /login
+                setInitialFilter('Acesso Restrito');
+                window.location.href = '#login';
+              }}
+              className="text-sm font-bold text-gray-400 hover:text-primary transition-colors"
+            >
+              Acesso Administrativo
+            </button>
+          </div>
+        </div>
+
+        {/* Emergency Buttons */}
+        <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+           <a href="tel:199" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50">
+             <span className="text-xl font-black text-primary">199</span>
+             <span className="text-[10px] font-bold text-gray-400 uppercase">Defesa Civil</span>
+           </a>
+           <a href="tel:193" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50">
+             <span className="text-xl font-black text-primary">193</span>
+             <span className="text-[10px] font-bold text-gray-400 uppercase">Bombeiros</span>
+           </a>
+        </div>
+      </div>
+    );
   }
 
   const renderContent = () => {
