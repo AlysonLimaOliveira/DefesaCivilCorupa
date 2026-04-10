@@ -19,7 +19,8 @@ import { signInAnonymously } from 'firebase/auth';
 import { type Incident } from './types';
 import { syncOfflineIncidents } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, AlertCircle, Info, X, Menu, Phone, MessageCircle } from 'lucide-react';
+import { Shield, AlertCircle, Info, X, Menu, Phone, MessageCircle, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { LOGO_URL } from './constants';
 
 const MainApp: React.FC = () => {
@@ -117,6 +118,48 @@ const MainApp: React.FC = () => {
     );
   }
 
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setAuthError('E-mail ou senha incorretos.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setAuthError('Este e-mail já está em uso.');
+      } else {
+        setAuthError('Erro na autenticação. Verifique os dados.');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleAnonymousLogin = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      await signInAnonymously(auth);
+    } catch (err) {
+      setAuthError('Erro ao acessar como visitante.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-bg-light flex flex-col items-center justify-center p-6 text-center">
@@ -129,17 +172,76 @@ const MainApp: React.FC = () => {
             />
           </div>
           <h1 className="text-3xl font-black text-primary tracking-tight mb-1">Defesa Civil</h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-12">Corupá - Santa Catarina</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-8">Corupá - Santa Catarina</p>
+
+          <form onSubmit={handleEmailAuth} className="space-y-3 mb-6">
+            <div className="relative text-left">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="email"
+                placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-100 py-3 pl-11 pr-4 rounded-xl outline-none focus:border-primary/30 transition-all text-sm"
+                required
+              />
+            </div>
+            <div className="relative text-left">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="password"
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-100 py-3 pl-11 pr-4 rounded-xl outline-none focus:border-primary/30 transition-all text-sm"
+                required
+              />
+            </div>
+
+            {authError && <p className="text-[10px] text-danger font-bold text-left px-2">{authError}</p>}
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              {authLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  {isRegistering ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
+                  <span>{isRegistering ? 'Criar Conta' : 'Entrar'}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsRegistering(!isRegistering)}
+              className="text-[10px] font-bold text-gray-400 hover:text-primary transition-colors uppercase tracking-widest"
+            >
+              {isRegistering ? 'Já tenho uma conta' : 'Criar nova conta'}
+            </button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-100"></div>
+            </div>
+            <div className="relative flex justify-center text-[8px] uppercase">
+              <span className="bg-white px-3 text-gray-300 font-bold tracking-[0.2em]">Ou Acesso Rápido</span>
+            </div>
+          </div>
 
           <button
-            onClick={() => signInAnonymously(auth)}
-            className="w-full bg-white border-2 border-gray-100 py-4 rounded-2xl font-bold shadow-sm hover:bg-gray-50 hover:border-primary/20 transition-all flex items-center justify-center gap-3 text-gray-700 mb-8"
+            onClick={handleAnonymousLogin}
+            className="w-full bg-white border-2 border-gray-100 py-3.5 rounded-2xl font-bold shadow-sm hover:bg-gray-50 hover:border-primary/20 transition-all flex items-center justify-center gap-3 text-gray-700 mb-6"
           >
             <AlertCircle className="w-5 h-5 text-primary" />
             <span>Registrar Ocorrência</span>
           </button>
 
-          <div className="text-[9px] text-gray-300 font-bold uppercase tracking-widest mb-2">
+          <div className="text-[9px] text-gray-300 font-bold uppercase tracking-widest">
             Versão 2.5.0 • 2026
           </div>
         </div>
