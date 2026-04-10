@@ -19,7 +19,7 @@ import { signInAnonymously } from 'firebase/auth';
 import { type Incident } from './types';
 import { syncOfflineIncidents } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, AlertCircle, Info, X, Menu } from 'lucide-react';
+import { Shield, AlertCircle, Info, X, Menu, Phone, MessageCircle } from 'lucide-react';
 import { LOGO_URL } from './constants';
 
 const MainApp: React.FC = () => {
@@ -120,50 +120,71 @@ const MainApp: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-bg-light flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-white rounded-[40px] shadow-2xl p-8 border border-gray-50 mb-8 relative z-10">
+        <div className="max-w-md w-full bg-white rounded-[40px] shadow-2xl p-8 border border-gray-50 mb-6 relative z-10">
           <div className="bg-white p-3 rounded-[28px] shadow-xl shadow-primary/10 mb-6 inline-block">
             <img
               src={LOGO_URL}
               alt="Logo Defesa Civil Corupá"
-              className="w-20 h-20 object-contain"
+              className="w-16 h-16 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-black text-primary tracking-tight mb-2">Defesa Civil</h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-8">Corupá - Santa Catarina</p>
+          <h1 className="text-3xl font-black text-primary tracking-tight mb-1">Defesa Civil</h1>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-12">Corupá - Santa Catarina</p>
 
           <button
             onClick={() => signInAnonymously(auth)}
-            className="w-full bg-primary text-white py-5 rounded-2xl font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg"
+            className="w-full bg-white border-2 border-gray-100 py-4 rounded-2xl font-bold shadow-sm hover:bg-gray-50 hover:border-primary/20 transition-all flex items-center justify-center gap-3 text-gray-700 mb-8"
           >
-            <AlertCircle className="w-6 h-6" />
+            <AlertCircle className="w-5 h-5 text-primary" />
             <span>Registrar Ocorrência</span>
           </button>
 
-          <div className="mt-8 pt-8 border-t border-gray-100">
-            <button
-              onClick={() => {
-                // Força o componente Login a aparecer se o admin precisar
-                // No futuro pode ser um modal ou rota /login
-                setInitialFilter('Acesso Restrito');
-                window.location.href = '#login';
-              }}
-              className="text-sm font-bold text-gray-400 hover:text-primary transition-colors"
-            >
-              Acesso Administrativo
-            </button>
+          <div className="text-[9px] text-gray-300 font-bold uppercase tracking-widest mb-2">
+            Versão 2.5.0 • 2026
           </div>
         </div>
 
         {/* Emergency Buttons */}
-        <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-           <a href="tel:199" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50">
-             <span className="text-xl font-black text-primary">199</span>
-             <span className="text-[10px] font-bold text-gray-400 uppercase">Defesa Civil</span>
-           </a>
-           <a href="tel:193" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50">
-             <span className="text-xl font-black text-primary">193</span>
-             <span className="text-[10px] font-bold text-gray-400 uppercase">Bombeiros</span>
-           </a>
+        <div className="w-full max-w-md space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <a href="tel:199" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50 group">
+              <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-1">
+                <Phone className="w-4 h-4" />
+              </div>
+              <span className="text-xl font-black text-gray-900">199</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Defesa Civil</span>
+            </a>
+            <a href="tel:193" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50 group">
+              <div className="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center mb-1">
+                <Phone className="w-4 h-4" />
+              </div>
+              <span className="text-xl font-black text-gray-900">193</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Bombeiros</span>
+            </a>
+          </div>
+
+          <a
+            href="https://wa.me/554733752112"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white p-6 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50 w-full"
+          >
+            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-2">
+              <MessageCircle className="w-6 h-6" />
+            </div>
+            <span className="text-xl font-black text-gray-900 leading-none">WhatsApp</span>
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Defesa Civil de Corupá</span>
+          </a>
+
+          <button
+            onClick={() => {
+              setInitialFilter('Acesso Restrito');
+              window.location.href = '#login';
+            }}
+            className="text-[10px] font-bold text-gray-300 hover:text-primary transition-colors uppercase tracking-widest mt-4"
+          >
+            Acesso Administrativo
+          </button>
         </div>
       </div>
     );
