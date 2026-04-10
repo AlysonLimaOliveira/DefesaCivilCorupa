@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth, googleProvider, signInWithPopup, handleFirestoreError, OperationType } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { Shield, LogIn, AlertCircle, Info, Phone, MessageCircle, Mail, Lock, UserPlus } from 'lucide-react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { Shield, LogIn, AlertCircle, Info, Phone, MessageCircle, Mail, Lock, UserPlus, Ghost } from 'lucide-react';
 import { motion } from 'motion/react';
 import { LOGO_URL } from '../constants';
 
@@ -11,6 +11,19 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+
+  const handleAnonymousLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await signInAnonymously(auth);
+    } catch (err: any) {
+      console.error("Erro login anônimo:", err);
+      setError('Erro ao entrar como visitante. Verifique sua conexão.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +134,31 @@ const Login: React.FC = () => {
             className="w-full text-center text-sm font-bold text-gray-400 hover:text-primary transition-colors"
           >
             {isRegistering ? 'Já tenho uma conta' : 'Ainda não tenho conta'}
+          </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-100"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase">
+              <span className="bg-white px-4 text-gray-300 font-bold tracking-widest">Acesso Rápido</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAnonymousLogin}
+            disabled={loading}
+            className="w-full bg-gray-900 text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-gray-200 hover:bg-black active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <Ghost className="w-5 h-5" />
+                <span>Entrar como Visitante</span>
+              </>
+            )}
           </button>
         </form>
 
