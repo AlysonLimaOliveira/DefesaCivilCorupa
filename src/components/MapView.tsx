@@ -157,6 +157,7 @@ const MapView: React.FC<MapViewProps> = ({ incidents, onMarkerClick, focusIncide
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          crossOrigin=""
         />
         {incidents.map((incident) => (
           <IncidentMarker 
