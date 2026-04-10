@@ -1,5 +1,15 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  type User,
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserLocalPersistence
+} from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocFromServer, type DocumentData, type QuerySnapshot, type DocumentSnapshot } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -7,6 +17,10 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Força a persistência no banco de dados do aparelho para evitar perda de estado no Android
+setPersistence(auth, [indexedDBLocalPersistence, browserLocalPersistence]);
+
 export const googleProvider = new GoogleAuthProvider();
 
 // Test connection
