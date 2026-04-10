@@ -34,6 +34,13 @@ const MainApp: React.FC = () => {
   const [initialFilter, setInitialFilter] = useState('Todos');
   const [mapFocus, setMapFocus] = useState<Incident | null>(null);
 
+  // Auth states (Moved outside if(loading) to avoid hook order issues)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   useEffect(() => {
     // Attempt to sync offline incidents on app start
     if (navigator.onLine) {
@@ -117,12 +124,6 @@ const MainApp: React.FC = () => {
       </div>
     );
   }
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
