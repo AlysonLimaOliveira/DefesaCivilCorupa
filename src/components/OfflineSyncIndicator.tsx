@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getOfflinePendingCount, onSyncStatusChange } from '../services/offlineService';
-import { WifiOff, Cloud, CloudDone, AlertCircle } from 'lucide-react';
+import { WifiOff, Cloud, CloudCheck, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SyncStatus {
@@ -85,7 +85,7 @@ export const OfflineSyncIndicator: React.FC = () => {
             ) : failed > 0 ? (
               <AlertCircle className="w-5 h-5 text-red-600" />
             ) : (
-              <CloudDone className="w-5 h-5 text-green-600" />
+              <CloudCheck className="w-5 h-5 text-green-600" />
             )}
             <div className="text-left">
               <h4 className="font-semibold text-blue-900">
