@@ -88,7 +88,7 @@ interface IncidentFormProps {
 }
 
 const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState(1); // For step 1: 1 = Category, 2 = Subcategory
   const [loading, setLoading] = useState(false);
@@ -142,7 +142,7 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
       if (!formData.type) return;
       setStep(2);
     } else {
-      setStep(prev => Math.min(prev + 1, 4));
+      setStep(prev => Math.min(prev + 1, 3));
     }
   };
 
@@ -158,24 +158,20 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
   };
 
   const handleSubmit = async () => {
-    if (!formData.reporterName || !formData.reporterCPF || !formData.reporterPhone) {
-      // Use a more subtle way to show error or just stay on the step
-      setStep(4);
-      return;
-    }
-
     setLoading(true);
     try {
-      // Save identification data for next time
-      localStorage.setItem('reporter_name', formData.reporterName);
-      localStorage.setItem('reporter_phone', formData.reporterPhone);
-      localStorage.setItem('reporter_cpf', formData.reporterCPF);
+      const finalData = {
+        ...formData,
+        reporterName: profile?.displayName || user?.displayName || formData.reporterName || "Visitante",
+        reporterPhone: profile?.phone || formData.reporterPhone || "",
+        reporterCPF: profile?.cpf || formData.reporterCPF || "",
+        reporterUid: user?.uid,
+      };
 
       if (!navigator.onLine && !editIncident) {
         // Offline mode - only for new incidents
         saveIncidentOffline({
-          ...formData,
-          reporterUid: user?.uid,
+          ...finalData,
           status: 'Pendente',
         });
         setIsOfflineSubmission(true);
@@ -185,13 +181,12 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
 
       if (editIncident) {
         await updateDoc(doc(db, 'incidents', editIncident.id), {
-          ...formData,
+          ...finalData,
           updatedAt: serverTimestamp(),
         });
       } else {
         const docRef = await addDoc(collection(db, 'incidents'), {
-          ...formData,
-          reporterUid: user?.uid,
+          ...finalData,
           status: 'Pendente',
           createdAt: serverTimestamp(),
         });
@@ -347,12 +342,12 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
           <X className="w-5 h-5 text-gray-400" />
         </button>
       </div>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Passo {currentStep} de 4</p>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Passo {currentStep} de 3</p>
       <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <motion.div 
           className="h-full bg-accent"
           initial={{ width: 0 }}
-          animate={{ width: `${(currentStep / 4) * 100}%` }}
+          animate={{ width: `${(currentStep / 3) * 100}%` }}
         />
       </div>
     </div>
@@ -648,62 +643,12 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
         />
       </div>
 
-      <button onClick={nextStep} className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-xl hover:bg-primary/90 transition-all">
-        Continuar
-      </button>
-    </div>
-  );
-
-  const renderStep4 = () => (
-    <div className="p-6 space-y-6">
-      <p className="text-sm font-medium text-gray-500">Identificação</p>
-
-      <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-center gap-3 text-blue-600">
-        <User className="w-5 h-5" />
-        <p className="text-xs font-medium">Seus dados são protegidos e usados apenas para contato oficial.</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-600">Nome</label>
-          <input 
-            type="text"
-            value={formData.reporterName}
-            onChange={(e) => setFormData({ ...formData, reporterName: e.target.value })}
-            placeholder="Seu nome"
-            className="w-full p-4 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-primary/10"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-600">CPF</label>
-          <input 
-            type="text"
-            value={formData.reporterCPF}
-            onChange={(e) => setFormData({ ...formData, reporterCPF: e.target.value })}
-            placeholder="000.000.000-00"
-            className="w-full p-4 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-primary/10"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-600">Telefone</label>
-          <input 
-            type="tel"
-            value={formData.reporterPhone}
-            onChange={(e) => setFormData({ ...formData, reporterPhone: e.target.value })}
-            placeholder="(00) 00000-0000"
-            className="w-full p-4 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-primary/10"
-          />
-        </div>
-      </div>
-
       <button 
         onClick={handleSubmit} 
-        disabled={loading || !formData.reporterName || !formData.reporterCPF || !formData.reporterPhone}
+        disabled={loading}
         className={cn(
-          "w-full py-4 rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-2",
-          loading || !formData.reporterName || !formData.reporterCPF || !formData.reporterPhone
-            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-            : "bg-success text-white hover:bg-success/90"
+          "w-full py-4 rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 mt-4",
+          loading ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-success text-white hover:bg-success/90"
         )}
       >
         {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Send className="w-5 h-5" /> Enviar Registro</>}
@@ -758,12 +703,10 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
               {step === 1 && renderStepHeader("Novo Registro", 1)}
               {step === 2 && renderStepHeader("Novo Registro", 2)}
               {step === 3 && renderStepHeader("Novo Registro", 3)}
-              {step === 4 && renderStepHeader("Novo Registro", 4)}
 
               {step === 1 && renderStep1()}
               {step === 2 && renderStep2()}
               {step === 3 && renderStep3()}
-              {step === 4 && renderStep4()}
             </motion.div>
           )}
         </AnimatePresence>

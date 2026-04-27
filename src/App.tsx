@@ -14,13 +14,13 @@ import Login from './components/Login';
 import NotificationManager from './components/NotificationManager';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import UserManagement from './components/UserManagement';
-import { auth, db, collection, query, orderBy, onSnapshot, handleFirestoreError, OperationType, where } from './firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, handleFirestoreError, OperationType, where, doc, setDoc } from './firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { type Incident } from './types';
 import { syncOfflineIncidents } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, AlertCircle, Info, X, Menu, Phone, MessageCircle, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, updateProfile } from 'firebase/auth';
 import { LOGO_URL } from './constants';
 
 const MainApp: React.FC = () => {
@@ -38,6 +38,10 @@ const MainApp: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [phone, setPhone] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -129,9 +133,31 @@ const MainApp: React.FC = () => {
     e.preventDefault();
     setAuthLoading(true);
     setAuthError(null);
+    if (isRegistering) {
+      if (!displayName.trim() || !cpf.trim() || !phone.trim()) {
+        setAuthError('Preencha todos os campos.');
+        setAuthLoading(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setAuthError('As senhas não coincidem.');
+        setAuthLoading(false);
+        return;
+      }
+    }
+
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: displayName.trim() });
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          displayName: displayName.trim(),
+          cpf: cpf.trim(),
+          phone: phone.trim(),
+          role: 'operator'
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -163,55 +189,102 @@ const MainApp: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-bg-light flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-white rounded-[40px] shadow-2xl p-8 border border-gray-50 mb-6 relative z-10">
-          <div className="bg-white p-3 rounded-[28px] shadow-xl shadow-primary/10 mb-6 inline-block">
-            <img
-              src={LOGO_URL}
-              alt="Logo Defesa Civil Corupá"
-              className="w-16 h-16 object-contain"
-            />
+      <div className="min-h-screen bg-bg-light flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-[32px] shadow-2xl p-6 border border-gray-50 flex flex-col gap-4 text-center">
+          <div className="flex flex-col items-center">
+            <div className="bg-white p-2 rounded-2xl shadow-md mb-2">
+              <img src={LOGO_URL} alt="Logo" className="w-10 h-10 object-contain" />
+            </div>
+            <h1 className="text-2xl font-black text-primary tracking-tight">Defesa Civil</h1>
+            <p className="text-gray-500 font-bold uppercase tracking-widest text-[8px]">Corupá - Santa Catarina</p>
           </div>
-          <h1 className="text-3xl font-black text-primary tracking-tight mb-1">Defesa Civil</h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-8">Corupá - Santa Catarina</p>
 
-          <form onSubmit={handleEmailAuth} className="space-y-3 mb-6">
+          <form onSubmit={handleEmailAuth} className="space-y-3">
             <div className="relative text-left">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="email"
                 placeholder="E-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-100 py-3 pl-11 pr-4 rounded-xl outline-none focus:border-primary/30 transition-all text-sm"
+                className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-primary/30 text-sm font-medium"
                 required
               />
             </div>
             <div className="relative text-left">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="password"
                 placeholder="Senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-100 py-3 pl-11 pr-4 rounded-xl outline-none focus:border-primary/30 transition-all text-sm"
+                className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-primary/30 text-sm font-medium"
                 required
               />
             </div>
 
-            {authError && <p className="text-[10px] text-danger font-bold text-left px-2">{authError}</p>}
+            {isRegistering && (
+              <>
+                <div className="relative text-left">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    placeholder="Confirmar Senha"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-primary/30 text-sm font-medium"
+                    required
+                  />
+                </div>
+                <div className="relative text-left">
+                  <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Nome Completo"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-primary/30 text-sm font-medium"
+                    required
+                  />
+                </div>
+                <div className="relative text-left">
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="CPF"
+                    value={cpf}
+                    onChange={(e) => setCpf(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-primary/30 text-sm font-medium"
+                    required
+                  />
+                </div>
+                <div className="relative text-left">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    placeholder="Telefone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-primary/30 text-sm font-medium"
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            {authError && <p className="text-[10px] text-danger font-bold">{authError}</p>}
 
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-primary text-white py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-sm"
             >
               {authLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   {isRegistering ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-                  <span>{isRegistering ? 'Criar Conta' : 'Entrar'}</span>
+                  <span>{isRegistering ? 'Criar Conta' : 'Entrar no Sistema'}</span>
                 </>
               )}
             </button>
@@ -219,75 +292,39 @@ const MainApp: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsRegistering(!isRegistering)}
-              className="text-[10px] font-bold text-gray-400 hover:text-primary transition-colors uppercase tracking-widest"
+              className="text-[9px] font-bold text-gray-400 hover:text-primary transition-colors uppercase tracking-widest"
             >
-              {isRegistering ? 'Já tenho uma conta' : 'Criar nova conta'}
+              {isRegistering ? 'Já tenho uma conta' : 'Ainda não tenho conta'}
             </button>
           </form>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-100"></div>
+          <div className="h-px bg-gray-50 w-full" />
+
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <a href="tel:199" className="bg-blue-50/50 p-3 rounded-2xl flex flex-col items-center gap-1 border border-blue-100 hover:bg-blue-100 transition-colors">
+                <span className="text-lg font-black text-blue-700">199</span>
+                <span className="text-[7px] font-bold text-blue-400 uppercase tracking-widest">Defesa Civil</span>
+              </a>
+              <a href="tel:193" className="bg-red-50/50 p-3 rounded-2xl flex flex-col items-center gap-1 border border-red-100 hover:bg-red-100 transition-colors">
+                <span className="text-lg font-black text-red-700">193</span>
+                <span className="text-[7px] font-bold text-red-400 uppercase tracking-widest">Bombeiros</span>
+              </a>
             </div>
-            <div className="relative flex justify-center text-[8px] uppercase">
-              <span className="bg-white px-3 text-gray-300 font-bold tracking-[0.2em]">Ou Acesso Rápido</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleAnonymousLogin}
-            className="w-full bg-white border-2 border-gray-100 py-3.5 rounded-2xl font-bold shadow-sm hover:bg-gray-50 hover:border-primary/20 transition-all flex items-center justify-center gap-3 text-gray-700 mb-6"
-          >
-            <AlertCircle className="w-5 h-5 text-primary" />
-            <span>Registrar Ocorrência</span>
-          </button>
-
-          <div className="text-[9px] text-gray-300 font-bold uppercase tracking-widest">
-            Versão 2.5.0 • 2026
-          </div>
-        </div>
-
-        {/* Emergency Buttons */}
-        <div className="w-full max-w-md space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <a href="tel:199" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50 group">
-              <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-1">
-                <Phone className="w-4 h-4" />
-              </div>
-              <span className="text-xl font-black text-gray-900">199</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Defesa Civil</span>
-            </a>
-            <a href="tel:193" className="bg-white p-4 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50 group">
-              <div className="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center mb-1">
-                <Phone className="w-4 h-4" />
-              </div>
-              <span className="text-xl font-black text-gray-900">193</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Bombeiros</span>
+            <a
+              href="https://wa.me/554792574816"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-green-50/50 p-3 rounded-2xl flex items-center justify-center gap-2 border border-green-100 hover:bg-green-100 transition-colors w-full"
+            >
+              <MessageCircle className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-bold text-green-700">WhatsApp Oficial</span>
             </a>
           </div>
 
-          <a
-            href="https://wa.me/554733752112"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white p-6 rounded-3xl shadow-lg flex flex-col items-center gap-1 border border-gray-50 hover:bg-gray-50 w-full"
-          >
-            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-2">
-              <MessageCircle className="w-6 h-6" />
-            </div>
-            <span className="text-xl font-black text-gray-900 leading-none">WhatsApp</span>
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Defesa Civil de Corupá</span>
-          </a>
-
-          <button
-            onClick={() => {
-              setInitialFilter('Acesso Restrito');
-              window.location.href = '#login';
-            }}
-            className="text-[10px] font-bold text-gray-300 hover:text-primary transition-colors uppercase tracking-widest mt-4"
-          >
-            Acesso Administrativo
-          </button>
+          <div className="pt-2">
+            <p className="text-[7px] text-gray-300 font-bold uppercase tracking-[0.3em]">Versão 3.0.0 • 2026</p>
+          </div>
         </div>
       </div>
     );

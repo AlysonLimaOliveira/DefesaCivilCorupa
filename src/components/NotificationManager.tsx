@@ -1,8 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { db, collection, query, orderBy, onSnapshot, limit, where } from '../firebase';
+import { db, collection, query, orderBy, onSnapshot, limit, where, doc, updateDoc, serverTimestamp } from '../firebase';
 import { useAuth } from '../AuthProvider';
 import { Bell, BellOff } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Badge } from '@capawesome/capacitor-badge';
+import { Capacitor } from '@capacitor/core';
 
 interface NotificationData {
   id: string;
@@ -30,10 +34,76 @@ const NotificationManager: React.FC = () => {
   }, [isMuted]);
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      setupNativeNotifications();
+    }
+  }, []);
+
+  const setupNativeNotifications = async () => {
+    let permStatus = await PushNotifications.checkPermissions();
+
+    if (permStatus.receive === 'prompt') {
+      permStatus = await PushNotifications.requestPermissions();
+    }
+
+    if (permStatus.receive !== 'granted') {
+      console.warn('Permissão de notificação negada no nativo');
+      return;
+    }
+
+    try {
+      await PushNotifications.register();
+    } catch (e) {
+      console.error('Falha ao registrar para notificações push:', e);
+      // Don't proceed with listeners if registration fails
+      return;
+    }
+
+    // Create Notification Channel for Android (Heads-up pop-up)
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        await PushNotifications.createChannel({
+          id: 'alerts',
+          name: 'Alertas Defesa Civil',
+          description: 'Notificações importantes de emergência',
+          importance: 5, // High importance for heads-up
+          visibility: 1,
+          vibration: true,
+        });
+      } catch (e) {
+        console.error('Erro ao criar canal de notificação:', e);
+      }
+    }
+
+    PushNotifications.addListener('registration', async (token) => {
+      console.log('Push registration success, token: ' + token.value);
+      if (user?.uid) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            fcmToken: token.value,
+            lastTokenUpdate: serverTimestamp()
+          });
+        } catch (e) {
+          console.error('Erro ao salvar token no Firestore:', e);
+        }
+      }
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+      console.log('Push received: ', notification);
+      try {
+        const { count } = await Badge.get();
+        await Badge.set({ count: count + 1 });
+      } catch (e) {
+        console.error('Erro ao atualizar badge:', e);
+      }
+    });
+  };
+
+  useEffect(() => {
     if (!user) return;
 
-    // Request permission on mount if default
-    if ('Notification' in window && Notification.permission === 'default') {
+    if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then(p => setPermission(p));
     }
 
@@ -44,16 +114,24 @@ const NotificationManager: React.FC = () => {
       limit(5)
     );
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       if (isInitialLoad.current) {
         isInitialLoad.current = false;
+        // Reset badge on load
+        if (Capacitor.isNativePlatform()) {
+          await Badge.set({ count: 0 });
+        }
         return;
       }
 
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added") {
           const newNotification = { id: change.doc.id, ...change.doc.data() } as NotificationData;
-          sendBrowserNotification(newNotification);
+          if (Capacitor.isNativePlatform()) {
+            sendNativeLocalNotification(newNotification);
+          } else {
+            sendBrowserNotification(newNotification);
+          }
         }
       });
     }, (error) => {
@@ -62,6 +140,34 @@ const NotificationManager: React.FC = () => {
 
     return () => unsubscribe();
   }, [user]);
+
+  const sendNativeLocalNotification = async (notif: NotificationData) => {
+    if (isMuted) return;
+
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: notif.title,
+            body: notif.message,
+            id: Math.floor(Math.random() * 10000),
+            extra: {
+              incidentId: notif.incidentId
+            },
+            schedule: { at: new Date(Date.now() + 100) },
+            channelId: 'alerts',
+            smallIcon: 'ic_stat_name', // Certifique-se que o ícone existe ou use default
+          }
+        ]
+      });
+
+      // Increment Badge
+      const { count } = await Badge.get();
+      await Badge.set({ count: count + 1 });
+    } catch (e) {
+      console.error('Erro ao enviar notificação local:', e);
+    }
+  };
 
   const sendBrowserNotification = (notif: NotificationData) => {
     if (!('Notification' in window) || isMuted) return;
@@ -76,66 +182,24 @@ const NotificationManager: React.FC = () => {
         window.focus();
       };
 
-      // Play a sound
       try {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
         audio.play();
-      } catch (e) {
-        console.log("Audio play failed", e);
-      }
+      } catch (e) {}
     }
   };
 
   const requestPermission = () => {
-    if ('Notification' in window) {
+    if (Capacitor.isNativePlatform()) {
+      setupNativeNotifications();
+    } else if ('Notification' in window) {
       Notification.requestPermission().then(p => {
         setPermission(p);
-        if (p === 'granted') {
-          new Notification('Notificações Ativadas', {
-            body: 'Você receberá alertas sobre novos incidentes em tempo real.',
-          });
-        } else if (p === 'denied') {
-          console.warn("As notificações foram bloqueadas pelo usuário.");
-        }
-      }).catch(err => {
-        console.error("Erro ao solicitar permissão de notificação:", err);
       });
     }
   };
 
-  if (!('Notification' in window)) return null;
-
-  return (
-    <div className="fixed bottom-24 right-8 z-[1000]">
-      {permission !== 'granted' && (
-        <button
-          onClick={requestPermission}
-          className="bg-warning text-white p-3 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center gap-2 group"
-          title="Ativar Notificações"
-        >
-          <BellOff className="w-5 h-5" />
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 text-xs font-bold whitespace-nowrap">
-            Ativar Alertas
-          </span>
-        </button>
-      )}
-      {permission === 'granted' && (
-        <button
-          onClick={() => setIsMuted(!isMuted)}
-          className={cn(
-            "p-3 rounded-full shadow-2xl flex items-center gap-2 group transition-all duration-300 hover:scale-110",
-            isMuted ? "bg-gray-500 text-white" : "bg-success text-white"
-          )}
-          title={isMuted ? "Ativar Alertas" : "Silenciar Alertas"}
-        >
-          {isMuted ? <BellOff className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 text-xs font-bold whitespace-nowrap">
-            {isMuted ? "Alertas Silenciados" : "Alertas Ativos"}
-          </span>
-        </button>
-      )}
-    </div>
-  );
+  return null;
 };
 
 export default NotificationManager;

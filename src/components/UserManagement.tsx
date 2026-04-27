@@ -25,7 +25,7 @@ const UserManagement: React.FC = () => {
       setLoading(false);
     }, (err) => {
       console.error("Error fetching users:", err);
-      handleFirestoreError(err, OperationType.LIST, 'users');
+      // handleFirestoreError(err, OperationType.LIST, 'users');
       setLoading(false);
     });
 
@@ -55,9 +55,10 @@ const UserManagement: React.FC = () => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!user || !user.email) return false;
+    const matchesSearch =
+      (user.displayName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (user.email?.toLowerCase() || '').includes(searchQuery.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
