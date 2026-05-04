@@ -15,16 +15,20 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, isAgent } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
-    { id: 'users', label: 'Usuários', icon: Users, adminOnly: true },
-    { id: 'map', label: 'Mapa', icon: MapIcon, adminOnly: false },
-    { id: 'register', label: 'Registrar', icon: PlusCircle, adminOnly: false },
-    { id: 'incidents', label: 'Incidentes', icon: List, adminOnly: false },
-  ].filter(item => !item.adminOnly || isAdmin);
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, role: 'agent' },
+    { id: 'users', label: 'Usuários', icon: Users, role: 'admin' },
+    { id: 'map', label: 'Mapa', icon: MapIcon, role: 'operator' },
+    { id: 'register', label: 'Registrar', icon: PlusCircle, role: 'operator' },
+    { id: 'incidents', label: 'Incidentes', icon: List, role: 'operator' },
+  ].filter(item => {
+    if (item.role === 'admin') return isAdmin;
+    if (item.role === 'agent') return isAgent;
+    return true;
+  });
 
   return (
     <>

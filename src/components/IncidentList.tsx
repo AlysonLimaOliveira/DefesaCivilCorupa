@@ -20,7 +20,7 @@ interface IncidentListProps {
 }
 
 const IncidentList: React.FC<IncidentListProps> = ({ incidents, profile, onEdit, onLocate, initialSearch = '', initialFilter = 'Todos' }) => {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isAgent, user } = useAuth();
   const [filter, setFilter] = useState<string>(initialFilter);
   const [search, setSearch] = useState(initialSearch);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -239,7 +239,7 @@ const IncidentList: React.FC<IncidentListProps> = ({ incidents, profile, onEdit,
                   )}
                 </div>
 
-                {isAdmin && (
+                {(isAdmin || isAgent) && (
                   <div className="mt-8 pt-6 border-t border-gray-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
                     <div className="flex flex-wrap gap-2">
                       {['Pendente', 'Em Atendimento', 'Resolvido'].map((status) => (

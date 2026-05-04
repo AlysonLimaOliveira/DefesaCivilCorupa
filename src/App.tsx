@@ -24,7 +24,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnony
 import { LOGO_URL } from './constants';
 
 const MainApp: React.FC = () => {
-  const { user, loading, isAdmin, profile } = useAuth();
+  const { user, loading, isAdmin, isAgent, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -53,10 +53,10 @@ const MainApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && user && !isAdmin) {
+    if (!loading && user && !isAgent) {
       setActiveTab('register');
     }
-  }, [loading, user, isAdmin]);
+  }, [loading, user, isAgent]);
 
   const handleNavigate = (tab: string, filter?: string) => {
     setActiveTab(tab);
@@ -74,7 +74,7 @@ const MainApp: React.FC = () => {
     if (!user || loading) return;
 
     let q;
-    if (isAdmin) {
+    if (isAgent) {
       q = query(collection(db, 'incidents'));
     } else {
       // Remove orderBy to avoid composite index requirement
@@ -332,10 +332,18 @@ const MainApp: React.FC = () => {
 
   const renderContent = () => {
     // Role-based protection
-    const allowedTabs = isAdmin ? ['dashboard', 'users', 'map', 'register', 'incidents'] : ['map', 'register', 'incidents'];
+    const allowedTabs = [];
+
+    if (isAdmin) {
+      allowedTabs.push('dashboard', 'users', 'map', 'register', 'incidents');
+    } else if (isAgent) {
+      allowedTabs.push('dashboard', 'map', 'register', 'incidents');
+    } else {
+      allowedTabs.push('map', 'register', 'incidents');
+    }
     
     if (!allowedTabs.includes(activeTab)) {
-      return <IncidentForm />;
+      return isAgent ? <Dashboard incidents={incidents} profile={profile} onNavigate={handleNavigate} /> : <IncidentForm />;
     }
 
     switch (activeTab) {
