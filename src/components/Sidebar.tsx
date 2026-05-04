@@ -15,7 +15,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
   const menuItems = [
@@ -98,7 +98,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
             {profile?.displayName?.[0] || profile?.email?.[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-medium truncate group-hover:text-white transition-colors">{profile?.displayName || 'Usuário'}</p>
+            <p className="text-sm font-medium truncate group-hover:text-white transition-colors">
+              {profile?.displayName || user?.displayName || 'Usuário'}
+            </p>
             <p className="text-xs text-white/60 truncate capitalize">{profile?.role}</p>
           </div>
           <Settings className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />

@@ -34,37 +34,35 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10002] flex items-center justify-center">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden"
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="relative w-full h-full bg-white overflow-y-auto no-scrollbar"
           >
-            <div className="bg-primary p-8 text-white relative">
+            <div className="bg-primary p-8 pb-12 text-white relative rounded-b-[40px] shadow-2xl">
               <button 
                 onClick={onClose}
-                className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="absolute top-6 right-6 p-3 hover:bg-white/10 rounded-full transition-colors z-10"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
-              <div className="flex flex-col items-center">
-                <div className="w-24 h-24 rounded-full bg-accent border-4 border-white/20 flex items-center justify-center text-3xl font-bold mb-4 shadow-xl">
+              <div className="flex flex-col items-center mt-4">
+                <div className="w-28 h-28 rounded-full bg-accent border-4 border-white/20 flex items-center justify-center text-4xl font-bold mb-6 shadow-2xl">
                   {profile?.displayName?.[0] || profile?.email?.[0]?.toUpperCase()}
                 </div>
-                <h2 className="text-2xl font-bold">Meu Perfil</h2>
-                <p className="text-white/60 text-sm mt-1 capitalize">{profile?.role}</p>
+                <h2 className="text-2xl font-bold text-center px-4">
+                  {profile?.displayName || user?.displayName || 'Usuário'}
+                </h2>
+                <div className="mt-2 px-4 py-1 bg-white/10 rounded-full">
+                  <p className="text-white/80 text-xs font-bold uppercase tracking-widest">{profile?.role}</p>
+                </div>
               </div>
             </div>
 
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-8 pb-20 max-w-2xl mx-auto">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Nome de Exibição</label>
                 <div className="relative group">

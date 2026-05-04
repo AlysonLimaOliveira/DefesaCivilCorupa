@@ -93,6 +93,7 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
   const [subStep, setSubStep] = useState(1); // For step 1: 1 = Category, 2 = Subcategory
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isOfflineSubmission, setIsOfflineSubmission] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -131,6 +132,32 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
         photos: editIncident.photos || [],
       });
       setStep(3); // Start at details step for editing
+    } else {
+      // Pré-carrega a localização para o mapa abrir mais rápido
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setFormData(prev => ({ ...prev, location: loc }));
+            // Busca o endereço em background
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.lat}&lon=${loc.lng}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.display_name) {
+                  setFormData(prev => ({ ...prev, address: data.display_name }));
+                  if (data.address && (data.address.city || data.address.town)) {
+                    const cityName = data.address.city || data.address.town;
+                    if (cities.includes(cityName)) {
+                      setFormData(prev => ({ ...prev, city: cityName }));
+                    }
+                  }
+                }
+              }).catch(() => {});
+          },
+          null,
+          { enableHighAccuracy: true }
+        );
+      }
     }
   }, [editIncident]);
 
@@ -158,6 +185,7 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
   };
 
   const handleSubmit = async () => {
+    console.log("Submit button clicked");
     setLoading(true);
     try {
       const finalData = {
@@ -165,10 +193,13 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
         reporterName: profile?.displayName || user?.displayName || formData.reporterName || "Visitante",
         reporterPhone: profile?.phone || formData.reporterPhone || "",
         reporterCPF: profile?.cpf || formData.reporterCPF || "",
-        reporterUid: user?.uid,
+        reporterUid: user?.uid || null,
       };
 
+      console.log("Attempting to submit incident data:", finalData);
+
       if (!navigator.onLine && !editIncident) {
+        console.log("Device is offline, saving locally");
         // Offline mode - only for new incidents
         saveIncidentOffline({
           ...finalData,
@@ -180,27 +211,49 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
       }
 
       if (editIncident) {
+        console.log("Updating existing incident:", editIncident.id);
         await updateDoc(doc(db, 'incidents', editIncident.id), {
           ...finalData,
           updatedAt: serverTimestamp(),
         });
       } else {
+        console.log("Adding new incident to Firestore...");
         const docRef = await addDoc(collection(db, 'incidents'), {
           ...finalData,
           status: 'Pendente',
           createdAt: serverTimestamp(),
         });
-        
+        console.log("Incident added with ID:", docRef.id);
+
         // Notify admins about the new incident
-        await notifyAdmins(
-          'Novo Incidente Registrado',
-          `${formData.category}: ${formData.type} em ${formData.city}`,
-          docRef.id
-        );
+        try {
+          console.log("Notifying admins...");
+          await notifyAdmins(
+            'Novo Incidente Registrado',
+            `${formData.category}: ${formData.type} em ${formData.city}`,
+            docRef.id
+          );
+          console.log("Admins notified");
+        } catch (notifyError) {
+          console.error("Error during admin notification:", notifyError);
+          // Don't fail the whole submission if notification fails
+        }
       }
+      console.log("Submission successful!");
       setSuccess(true);
-    } catch (error) {
-      handleFirestoreError(error, editIncident ? OperationType.UPDATE : OperationType.CREATE, 'incidents');
+      setErrorMessage(null);
+    } catch (error: any) {
+      console.error("Submission failed with error:", error);
+      setLoading(false);
+
+      let msg = "Erro ao enviar registro. Verifique sua conexão ou permissões.";
+      if (error?.code === 'permission-denied' || error?.message?.includes("permissions")) {
+        msg = "Erro de permissão no Firebase. As regras do Firestore precisam ser atualizadas no Console.";
+      } else if (error?.message) {
+        msg = `Erro: ${error.message}`;
+      }
+
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -469,11 +522,14 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
 
         <MapContainer 
           center={formData.location ? [formData.location.lat, formData.location.lng] : [-26.4322, -49.2439]} 
-          zoom={13} 
+          zoom={15}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          />
           <ZoomControl position="bottomright" />
           <LocationSelector position={formData.location} onLocationSelect={handleMapClick} />
           {formData.location && <RecenterMap center={[formData.location.lat, formData.location.lng]} />}
@@ -642,6 +698,13 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
           className="w-full h-32 p-4 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none"
         />
       </div>
+
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-1">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p>{errorMessage}</p>
+        </div>
+      )}
 
       <button 
         onClick={handleSubmit} 

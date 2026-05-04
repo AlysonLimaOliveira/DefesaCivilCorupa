@@ -19,7 +19,8 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 // Força a persistência no banco de dados do aparelho para evitar perda de estado no Android
-setPersistence(auth, [indexedDBLocalPersistence, browserLocalPersistence]);
+// Removido o array para evitar erro de asserção interna no Capacitor
+setPersistence(auth, indexedDBLocalPersistence).catch(err => console.error("Persistence error:", err));
 
 export const googleProvider = new GoogleAuthProvider();
 
