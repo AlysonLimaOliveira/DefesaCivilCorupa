@@ -1,4 +1,3 @@
-tsx
 import React, { useState } from 'react';
 import { auth, googleProvider, signInWithPopup } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, updateProfile } from 'firebase/auth';
