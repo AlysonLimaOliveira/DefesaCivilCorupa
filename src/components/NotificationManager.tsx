@@ -156,7 +156,8 @@ const NotificationManager: React.FC = () => {
             },
             schedule: { at: new Date(Date.now() + 100) },
             channelId: 'alerts',
-            smallIcon: 'ic_stat_name', // Certifique-se que o ícone existe ou use default
+            smallIcon: 'ic_launcher', // Ícone da barra de status
+            largeIcon: 'ic_launcher', // Ícone grande que aparece na notificação
           }
         ]
       });
