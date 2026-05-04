@@ -10,7 +10,7 @@ import {
   indexedDBLocalPersistence,
   browserLocalPersistence
 } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocFromServer, type DocumentData, type QuerySnapshot, type DocumentSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocFromServer, writeBatch, type DocumentData, type QuerySnapshot, type DocumentSnapshot } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase SDK
@@ -102,6 +102,7 @@ export {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  writeBatch,
   signInWithPopup,
   signOut,
   onAuthStateChanged,

@@ -37,6 +37,7 @@ const MainApp: React.FC = () => {
   const [mapFocus, setMapFocus] = useState<Incident | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Auth states (Moved outside if(loading) to avoid hook order issues)
   const [email, setEmail] = useState('');
@@ -61,6 +62,22 @@ const MainApp: React.FC = () => {
       setActiveTab('register');
     }
   }, [loading, user, isAgent]);
+
+  useEffect(() => {
+    if (!user || loading) return;
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
+      where('read', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadNotifications(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [user, loading]);
 
   const handleNavigate = (tab: string, filter?: string) => {
     setActiveTab(tab);
@@ -429,8 +446,10 @@ const MainApp: React.FC = () => {
             className="bg-white/10 p-2.5 rounded-xl hover:bg-white/20 transition-colors relative"
           >
             <Bell className="w-6 h-6" />
-            {incidents.length > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full border-2 border-[#f36c21]" />
+            {unreadNotifications > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-[#f36c21] animate-bounce">
+                {unreadNotifications}
+              </span>
             )}
           </button>
 
@@ -460,7 +479,14 @@ const MainApp: React.FC = () => {
         <NotificationManager />
         <OfflineSyncIndicator />
         <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-        <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
+        <NotificationModal
+          isOpen={isNotificationOpen}
+          onClose={() => setIsNotificationOpen(false)}
+          onNavigateToIncident={(id) => {
+            setSearchQuery(id);
+            setActiveTab('incidents');
+          }}
+        />
 
         <AnimatePresence mode="wait">
           <motion.div
