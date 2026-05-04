@@ -207,7 +207,7 @@ const IncidentList: React.FC<IncidentListProps> = ({ incidents, profile, onEdit,
                       </div>
                       <span className="truncate font-medium">{incident.address || 'Localização no mapa'}</span>
                     </div>
-                    <div 
+                    <div
                       onClick={() => setSelectedReporter(incident)}
                       className="flex items-center gap-3 text-sm text-gray-600 cursor-pointer hover:text-primary transition-colors group/rep"
                     >
