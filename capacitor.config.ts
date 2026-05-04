@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"],
     },
     LocalNotifications: {
-      smallIcon: "ic_stat_logo_defesa_civil",
+      smallIcon: "ic_stat_name",
       iconColor: "#003366",
     },
   },

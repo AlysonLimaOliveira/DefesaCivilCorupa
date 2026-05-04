@@ -169,7 +169,7 @@ const NotificationManager: React.FC = () => {
             },
             schedule: { at: new Date(Date.now() + 100) },
             channelId: 'alerts',
-            smallIcon: 'ic_stat_logo_defesa_civil', // Ícone da barra de status
+            smallIcon: 'ic_stat_name', // Usando o ícone que realmente existe no Android
             largeIcon: 'res://ic_launcher', // Ícone grande que aparece na notificação
           }
         ]
