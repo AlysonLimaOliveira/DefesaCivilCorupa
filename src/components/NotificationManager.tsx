@@ -21,6 +21,7 @@ interface NotificationData {
 const NotificationManager: React.FC = () => {
   const { user } = useAuth();
   const isInitialLoad = useRef(true);
+  const lastToken = useRef<string | null>(null);
   const [permission, setPermission] = React.useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
@@ -39,6 +40,25 @@ const NotificationManager: React.FC = () => {
     }
   }, []);
 
+  // Sincroniza o token se ele já foi recebido mas o usuário ainda não estava logado
+  useEffect(() => {
+    if (user?.uid && lastToken.current) {
+      updateUserToken(user.uid, lastToken.current);
+    }
+  }, [user]);
+
+  const updateUserToken = async (uid: string, token: string) => {
+    try {
+      await updateDoc(doc(db, 'users', uid), {
+        fcmToken: token,
+        lastTokenUpdate: serverTimestamp()
+      });
+      console.log('Token FCM sincronizado com sucesso');
+    } catch (e) {
+      console.error('Erro ao salvar token no Firestore:', e);
+    }
+  };
+
   const setupNativeNotifications = async () => {
     let permStatus = await PushNotifications.checkPermissions();
 
@@ -55,7 +75,6 @@ const NotificationManager: React.FC = () => {
       await PushNotifications.register();
     } catch (e) {
       console.error('Falha ao registrar para notificações push:', e);
-      // Don't proceed with listeners if registration fails
       return;
     }
 
@@ -77,15 +96,9 @@ const NotificationManager: React.FC = () => {
 
     PushNotifications.addListener('registration', async (token) => {
       console.log('Push registration success, token: ' + token.value);
+      lastToken.current = token.value;
       if (user?.uid) {
-        try {
-          await updateDoc(doc(db, 'users', user.uid), {
-            fcmToken: token.value,
-            lastTokenUpdate: serverTimestamp()
-          });
-        } catch (e) {
-          console.error('Erro ao salvar token no Firestore:', e);
-        }
+        updateUserToken(user.uid, token.value);
       }
     });
 
@@ -156,8 +169,8 @@ const NotificationManager: React.FC = () => {
             },
             schedule: { at: new Date(Date.now() + 100) },
             channelId: 'alerts',
-            smallIcon: 'ic_launcher', // Ícone da barra de status
-            largeIcon: 'ic_launcher', // Ícone grande que aparece na notificação
+            smallIcon: 'ic_stat_logo_defesa_civil', // Ícone da barra de status
+            largeIcon: 'res://ic_launcher', // Ícone grande que aparece na notificação
           }
         ]
       });
