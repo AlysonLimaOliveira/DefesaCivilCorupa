@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { auth, googleProvider, signInWithPopup } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, updateProfile } from 'firebase/auth';
-import { Shield, LogIn, AlertCircle, Phone, Mail, Lock, UserPlus, Ghost } from 'lucide-react';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { Shield, AlertCircle, Phone, Mail, Lock, UserPlus, MessageCircle } from 'lucide-react';
 import { LOGO_URL } from '../constants';
 import { db, doc, setDoc } from '../firebase';
 
@@ -59,13 +59,6 @@ const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleAnonymousLogin = async () => {
-    setLoading(true);
-    try { await signInAnonymously(auth); }
-    catch (err) { setError('Erro ao entrar como visitante.'); }
-    finally { setLoading(false); }
   };
 
   return (
@@ -186,14 +179,6 @@ const Login: React.FC = () => {
               </div>
             )}
           </form>
-
-          <div className="relative my-6 text-center">
-            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest bg-white px-2">Ou acesse como</span>
-          </div>
-
-          <button onClick={handleAnonymousLogin} className="w-full bg-gray-900 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 mb-4">
-            <Ghost className="w-5 h-5" /> Visitante
-          </button>
         </div>
 
         <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest text-center mt-8">
@@ -201,15 +186,27 @@ const Login: React.FC = () => {
         </p>
 
         {/* Emergency Contacts */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <a href="tel:199" className="bg-white p-4 rounded-[28px] shadow-xl flex flex-col items-center border border-gray-50">
-            <span className="text-xl font-black text-gray-900">199</span>
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-blue-500">Defesa Civil</span>
+        <div className="space-y-3 mt-4">
+          <a
+            href={`https://wa.me/554792574816?text=${encodeURIComponent("Vim pelo APP da Defesa Civíl de Corupá registrar uma ocorrência: ")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          >
+            <MessageCircle className="w-5 h-5" />
+            WHATSAPP DEFESA CIVIL
           </a>
-          <a href="tel:193" className="bg-white p-4 rounded-[28px] shadow-xl flex flex-col items-center border border-gray-50">
-            <span className="text-xl font-black text-gray-900">193</span>
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-red-500">Bombeiros</span>
-          </a>
+
+          <div className="grid grid-cols-2 gap-3">
+            <a href="tel:199" className="bg-accent p-4 rounded-[28px] shadow-xl flex flex-col items-center border border-accent/20 active:scale-95 transition-transform">
+              <span className="text-2xl font-black text-primary">199</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">Defesa Civil</span>
+            </a>
+            <a href="tel:193" className="bg-danger p-4 rounded-[28px] shadow-xl flex flex-col items-center border border-danger/20 active:scale-95 transition-transform">
+              <span className="text-2xl font-black text-white">193</span>
+              <span className="text-[10px] font-black text-white uppercase tracking-widest">Bombeiros</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
