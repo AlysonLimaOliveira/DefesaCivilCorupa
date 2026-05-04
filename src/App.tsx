@@ -14,12 +14,14 @@ import Login from './components/Login';
 import NotificationManager from './components/NotificationManager';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import UserManagement from './components/UserManagement';
+import ProfileModal from './components/ProfileModal';
+import NotificationModal from './components/NotificationModal';
 import { auth, db, collection, query, orderBy, onSnapshot, handleFirestoreError, OperationType, where, doc, setDoc } from './firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { type Incident } from './types';
 import { syncOfflineIncidents } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, AlertCircle, Info, X, Menu, Phone, MessageCircle, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Shield, AlertCircle, Info, X, Menu, Phone, MessageCircle, Mail, Lock, LogIn, UserPlus, Bell, LogOut } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, updateProfile } from 'firebase/auth';
 import { LOGO_URL } from './constants';
 
@@ -33,6 +35,8 @@ const MainApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [initialFilter, setInitialFilter] = useState('Todos');
   const [mapFocus, setMapFocus] = useState<Incident | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   // Auth states (Moved outside if(loading) to avoid hook order issues)
   const [email, setEmail] = useState('');
@@ -400,12 +404,16 @@ const MainApp: React.FC = () => {
       />
       
       {/* Mobile Header */}
-      <header className="lg:hidden bg-primary text-white p-4 flex items-center justify-between flex-row-reverse sticky top-0 z-[1001] shadow-lg">
-        <div 
-          onClick={() => handleNavigate(isAdmin ? 'dashboard' : 'register')}
-          className="flex items-center flex-row-reverse gap-3 text-right cursor-pointer hover:opacity-80 transition-opacity active:scale-95"
-        >
-          <div className="bg-white p-1 rounded-lg w-10 h-10 flex items-center justify-center overflow-hidden shadow-sm">
+      <header className="lg:hidden bg-[#f36c21] text-white p-4 flex items-center justify-between sticky top-0 z-[1001] shadow-lg h-20">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <Menu className="w-7 h-7" />
+          </button>
+
+          <div className="bg-white p-1 rounded-lg w-14 h-14 flex items-center justify-center overflow-hidden shadow-sm">
             <img 
               src={LOGO_URL} 
               alt="Logo Defesa Civil Corupá" 
@@ -413,20 +421,47 @@ const MainApp: React.FC = () => {
               referrerPolicy="no-referrer"
             />
           </div>
-          <h1 className="font-bold text-base">Defesa Civil Corupá</h1>
         </div>
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsNotificationOpen(true)}
+            className="bg-white/10 p-2.5 rounded-xl hover:bg-white/20 transition-colors relative"
+          >
+            <Bell className="w-6 h-6" />
+            {incidents.length > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-white rounded-full border-2 border-[#f36c21]" />
+            )}
+          </button>
+
+          <div
+            onClick={() => setIsProfileOpen(true)}
+            className="w-11 h-11 rounded-full border-2 border-white/20 overflow-hidden bg-gray-200 shadow-sm cursor-pointer"
+          >
+            {profile?.photoURL ? (
+              <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center font-bold text-white text-sm bg-primary/20">
+                {profile?.displayName?.[0] || 'U'}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => auth.signOut()}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors ml-1"
+          >
+            <LogOut className="w-6 h-6 opacity-60" />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 lg:ml-64 min-h-screen relative">
         <NotificationManager />
         <OfflineSyncIndicator />
-        
+        <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+        <NotificationModal isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
+
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
