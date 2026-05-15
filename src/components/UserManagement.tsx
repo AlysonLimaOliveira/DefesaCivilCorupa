@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { db, collection, onSnapshot, query, handleFirestoreError, OperationType, doc, updateDoc } from '../firebase';
 import { type UserProfile } from '../types';
-import { Users, Mail, Shield, User as UserIcon, Search, Filter, Settings, AlertTriangle, X as CloseIcon } from 'lucide-react';
+import { useAuth } from '../AuthProvider';
+import { Users, Mail, Shield, User as UserIcon, Search, Filter, Settings, AlertTriangle, X as CloseIcon, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const UserManagement: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'operator'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'agent' | 'operator'>('all');
   const [updatingUid, setUpdatingUid] = useState<string | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; user: UserProfile | null }>({
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; user: UserProfile | null; targetRole?: 'admin' | 'agent' | 'operator' }>({
     isOpen: false,
     user: null
   });
@@ -32,19 +34,16 @@ const UserManagement: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleToggleRole = async () => {
+  const handleUpdateRole = async (targetRole: 'admin' | 'agent' | 'operator') => {
     if (updatingUid || !confirmModal.user) return;
     
     const user = confirmModal.user;
-    const isPromoting = user.role === 'operator';
-    const newRole = isPromoting ? 'admin' : 'operator';
-
     setUpdatingUid(user.uid);
     setConfirmModal({ isOpen: false, user: null });
     
     try {
       await updateDoc(doc(db, 'users', user.uid), {
-        role: newRole
+        role: targetRole
       });
     } catch (err) {
       console.error("Error updating user role:", err);
@@ -100,7 +99,8 @@ const UserManagement: React.FC = () => {
             >
               <option value="all">Todos os Cargos</option>
               <option value="admin">Administradores</option>
-              <option value="operator">Operadores</option>
+              <option value="agent">Agentes</option>
+              <option value="operator">Cidadãos</option>
             </select>
           </div>
         </div>
@@ -118,15 +118,16 @@ const UserManagement: React.FC = () => {
             <div className="flex items-start gap-4">
               <div className={cn(
                 "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold shadow-inner",
-                user.role === 'admin' ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"
+                user.role === 'admin' ? "bg-primary/10 text-primary" :
+                user.role === 'agent' ? "bg-secondary text-white" : "bg-accent/10 text-accent"
               )}>
                 {user.displayName?.[0] || user.email[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-bold text-gray-900 truncate">{user.displayName || 'Sem Nome'}</h3>
-                  {user.role === 'admin' && (
-                    <Shield className="w-4 h-4 text-primary shrink-0" />
+                  {(user.role === 'admin' || user.role === 'agent') && (
+                    <Shield className={cn("w-4 h-4 shrink-0", user.role === 'admin' ? "text-primary" : "text-secondary")} />
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
@@ -135,9 +136,10 @@ const UserManagement: React.FC = () => {
                 </div>
                 <div className={cn(
                   "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
-                  user.role === 'admin' ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"
+                  user.role === 'admin' ? "bg-primary/10 text-primary" :
+                  user.role === 'agent' ? "bg-secondary/10 text-secondary" : "bg-accent/10 text-accent"
                 )}>
-                  {user.role === 'admin' ? 'Administrador' : 'Operador'}
+                  {user.role === 'admin' ? 'Administrador' : user.role === 'agent' ? 'Agente' : 'Cidadão'}
                 </div>
               </div>
             </div>
@@ -146,25 +148,32 @@ const UserManagement: React.FC = () => {
               <div className="text-xs text-gray-400 font-medium">
                 UID: <span className="font-mono">{user.uid.slice(0, 8)}...</span>
               </div>
-              <button 
-                onClick={() => setConfirmModal({ isOpen: true, user })}
-                disabled={updatingUid === user.uid}
-                className={cn(
-                  "px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-wider shadow-sm",
-                  updatingUid === user.uid ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400" : 
-                  user.role === 'admin' ? "bg-amber-50 text-amber-600 hover:bg-amber-100" : "bg-primary/10 text-primary hover:bg-primary/20"
-                )}
-                title={user.role === 'admin' ? "Rebaixar para Operador" : "Promover para Administrador"}
-              >
-                {updatingUid === user.uid ? (
-                  <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Settings className="w-4 h-4" />
-                    {user.role === 'admin' ? 'Rebaixar' : 'Promover'}
-                  </>
-                )}
-              </button>
+              {isAdmin ? (
+                <button
+                  onClick={() => setConfirmModal({ isOpen: true, user })}
+                  disabled={updatingUid === user.uid}
+                  className={cn(
+                    "px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-wider shadow-sm",
+                    updatingUid === user.uid ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400" :
+                    user.role === 'admin' ? "bg-amber-50 text-amber-600 hover:bg-amber-100" : "bg-primary/10 text-primary hover:bg-primary/20"
+                  )}
+                  title={user.role === 'admin' ? "Alterar Cargo" : "Promover Usuário"}
+                >
+                  {updatingUid === user.uid ? (
+                    <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Settings className="w-4 h-4" />
+                      {user.role === 'admin' ? 'Gerenciar' : 'Promover'}
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="px-4 py-2 bg-gray-50 text-gray-400 rounded-xl flex items-center gap-2 font-bold text-[10px] uppercase tracking-wider border border-gray-100">
+                  <Eye className="w-3.5 h-3.5" />
+                  Visualizar
+                </div>
+              )}
             </div>
           </motion.div>
         ))}
@@ -180,7 +189,7 @@ const UserManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Confirmation/Role Selection Modal */}
       <AnimatePresence>
         {confirmModal.isOpen && confirmModal.user && (
           <motion.div
@@ -198,32 +207,41 @@ const UserManagement: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-8 text-center">
-                <div className={cn(
-                  "w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6",
-                  confirmModal.user.role === 'operator' ? "bg-primary/10 text-primary" : "bg-amber-100 text-amber-600"
-                )}>
-                  <AlertTriangle className="w-10 h-10" />
+                <div className="w-20 h-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-6">
+                  <Settings className="w-10 h-10" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">
-                  {confirmModal.user.role === 'operator' ? 'Promover Usuário?' : 'Rebaixar Usuário?'}
-                </h3>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Alterar Cargo</h3>
                 <p className="text-gray-500 font-medium mb-8">
-                  Deseja alterar o cargo de <span className="text-gray-900 font-bold">{confirmModal.user.displayName || confirmModal.user.email}</span> para 
-                  <span className="text-primary font-bold"> {confirmModal.user.role === 'operator' ? 'Administrador' : 'Operador'}</span>?
+                  Selecione o novo cargo para <span className="text-gray-900 font-bold">{confirmModal.user.displayName || confirmModal.user.email}</span>
                 </p>
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={handleToggleRole}
-                    className={cn(
-                      "w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all",
-                      confirmModal.user.role === 'operator' ? "bg-primary hover:bg-primary/90 shadow-primary/20" : "bg-amber-600 hover:bg-amber-700 shadow-amber-200"
-                    )}
-                  >
-                    Sim, Confirmar Alteração
-                  </button>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {[
+                    { id: 'admin', label: 'Administrador', desc: 'Acesso total e gestão de usuários', color: 'bg-primary' },
+                    { id: 'agent', label: 'Agente', desc: 'Acesso ao dashboard e visualização', color: 'bg-secondary' },
+                    { id: 'operator', label: 'Cidadão', desc: 'Acesso apenas aos seus registros', color: 'bg-accent' }
+                  ].map((roleOption) => (
+                    <button
+                      key={roleOption.id}
+                      onClick={() => handleUpdateRole(roleOption.id as any)}
+                      className={cn(
+                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                        confirmModal.user?.role === roleOption.id
+                          ? "border-primary bg-primary/5"
+                          : "border-gray-50 hover:border-gray-200 bg-white"
+                      )}
+                    >
+                      <div className={cn("w-3 h-3 rounded-full", roleOption.color)} />
+                      <div>
+                        <p className="font-bold text-gray-900 leading-none">{roleOption.label}</p>
+                        <p className="text-[10px] text-gray-400 mt-1 font-medium">{roleOption.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+
                   <button
                     onClick={() => setConfirmModal({ isOpen: false, user: null })}
-                    className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                    className="mt-4 w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                   >
                     Cancelar
                   </button>

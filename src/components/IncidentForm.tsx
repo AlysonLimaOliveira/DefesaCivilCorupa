@@ -269,11 +269,38 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
     filesToProcess.forEach((file: File) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setFormData(prev => ({
-          ...prev,
-          photos: [...prev.photos, base64String]
-        }));
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Redimensionar mantendo aspect ratio (max 1200px)
+          const MAX_SIZE = 1200;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); // 70% quality
+          setFormData(prev => ({
+            ...prev,
+            photos: [...prev.photos, compressedBase64]
+          }));
+        };
       };
       reader.readAsDataURL(file);
     });
@@ -302,12 +329,29 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
 
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    let width = video.videoWidth;
+    let height = video.videoHeight;
+
+    // Redimensionar mantendo aspect ratio (max 1200px)
+    const MAX_SIZE = 1200;
+    if (width > height) {
+      if (width > MAX_SIZE) {
+        height *= MAX_SIZE / width;
+        width = MAX_SIZE;
+      }
+    } else {
+      if (height > MAX_SIZE) {
+        width *= MAX_SIZE / height;
+        height = MAX_SIZE;
+      }
+    }
+
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
-    ctx?.drawImage(video, 0, 0);
+    ctx?.drawImage(video, 0, 0, width, height);
     
-    const photo = canvas.toDataURL('image/jpeg', 0.8);
+    const photo = canvas.toDataURL('image/jpeg', 0.7); // 70% quality
     setFormData(prev => ({
       ...prev,
       photos: [...prev.photos, photo].slice(0, 3)

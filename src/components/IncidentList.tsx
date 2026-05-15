@@ -92,7 +92,7 @@ const IncidentList: React.FC<IncidentListProps> = ({ incidents, profile, onEdit,
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h2 className="text-2xl lg:text-3xl font-bold text-primary tracking-tight">
-            Ocorrências de {profile?.displayName || 'Operador'}
+            Ocorrências
           </h2>
           <p className="text-gray-500 mt-1 text-sm lg:text-base">Gerencie e acompanhe todos os incidentes registrados no sistema.</p>
         </div>

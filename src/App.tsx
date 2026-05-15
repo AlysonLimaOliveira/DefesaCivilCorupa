@@ -4,13 +4,15 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import IncidentForm from './components/IncidentForm';
 import IncidentList from './components/IncidentList';
-import MapView from './components/MapView';
+// import MapView from './components/MapView'; // Moved to lazy load
 import Login from './components/Login';
 import NotificationManager from './components/NotificationManager';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import UserManagement from './components/UserManagement';
 import ProfileModal from './components/ProfileModal';
 import NotificationModal from './components/NotificationModal';
+const MapView = React.lazy(() => import('./components/MapView'));
+
 import { db, collection, query, onSnapshot, handleFirestoreError, OperationType, where, auth, writeBatch, getDocs, doc } from './firebase';
 import { type Incident } from './types';
 import { Capacitor } from '@capacitor/core';
@@ -134,14 +136,23 @@ const MainApp: React.FC = () => {
       case 'users': return <UserManagement />;
       case 'map': return (
         <div className="h-[calc(100vh-64px)] p-4 lg:p-8">
-          <MapView 
-            incidents={incidents} 
-            focusIncident={mapFocus}
-            onMarkerClick={(incident) => {
-              setSearchQuery(incident.id);
-              setActiveTab('incidents');
-            }}
-          />
+          <React.Suspense fallback={
+            <div className="w-full h-full bg-white/50 rounded-3xl flex items-center justify-center animate-pulse">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-primary font-bold animate-bounce">Carregando Mapa...</p>
+              </div>
+            </div>
+          }>
+            <MapView
+              incidents={incidents}
+              focusIncident={mapFocus}
+              onMarkerClick={(incident) => {
+                setSearchQuery(incident.id);
+                setActiveTab('incidents');
+              }}
+            />
+          </React.Suspense>
         </div>
       );
       case 'register': return (

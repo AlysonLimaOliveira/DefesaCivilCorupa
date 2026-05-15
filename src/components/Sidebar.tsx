@@ -20,7 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, role: 'agent' },
-    { id: 'users', label: 'Usuários', icon: Users, role: 'admin' },
+    { id: 'users', label: 'Usuários', icon: Users, role: 'agent' },
     { id: 'map', label: 'Mapa', icon: MapIcon, role: 'operator' },
     { id: 'register', label: 'Registrar', icon: PlusCircle, role: 'operator' },
     { id: 'incidents', label: 'Incidentes', icon: List, role: 'operator' },
@@ -114,7 +114,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
             <p className="text-sm font-medium truncate group-hover:text-white transition-colors">
               {profile?.displayName || user?.displayName || 'Usuário'}
             </p>
-            <p className="text-xs text-white/60 truncate capitalize">{profile?.role}</p>
+            <p className="text-[10px] text-white/60 truncate uppercase tracking-widest font-bold">
+              {profile?.role === 'admin' ? 'Administrador' : profile?.role === 'agent' ? 'Agente' : 'Cidadão'}
+            </p>
           </div>
           <Settings className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />
         </button>

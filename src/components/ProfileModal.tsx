@@ -109,7 +109,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                   {profile?.displayName || user?.displayName || 'Usuário'}
                 </h2>
                 <div className="mt-2 px-4 py-1 bg-white/10 rounded-full">
-                  <p className="text-white/80 text-xs font-bold uppercase tracking-widest">{profile?.role}</p>
+                  <p className="text-white/80 text-xs font-bold uppercase tracking-widest">
+                    {profile?.role === 'admin' ? 'Administrador' : profile?.role === 'agent' ? 'Agente' : 'Cidadão'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -148,7 +150,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                   <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    value={profile?.role === 'admin' ? 'Administrador' : 'Operador'}
+                    value={profile?.role === 'admin' ? 'Administrador' : profile?.role === 'agent' ? 'Agente' : 'Cidadão'}
                     disabled
                     className="w-full pl-12 pr-4 py-4 bg-gray-100 border border-gray-200 rounded-2xl cursor-not-allowed capitalize text-gray-500"
                   />

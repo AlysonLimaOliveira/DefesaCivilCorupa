@@ -31,7 +31,7 @@ export interface UserProfile {
   photoURL?: string;
   cpf?: string;
   phone?: string;
-  role: "admin" | "operator";
+  role: "admin" | "agent" | "operator";
 }
 
 export interface Stats {
