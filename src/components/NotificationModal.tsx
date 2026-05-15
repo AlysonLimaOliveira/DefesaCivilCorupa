@@ -37,11 +37,10 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
       Badge.set({ count: 0 }).catch(console.error);
     }
 
-    // Busca ampliada para encontrar notificações "perdidas"
+    // Busca total para garantir que NENHUMA notificação "perdida" fique de fora
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', user.uid),
-      limit(200) // Aumentamos bem o limite para varrer o histórico
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -50,7 +49,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
         ...doc.data()
       })) as NotificationData[];
 
-      // Ordenação: Não lidas (ou sem o campo read) no topo, depois por data
+      // Ordenação: Não lidas no topo, depois por data decrescente
       docs.sort((a, b) => {
         const aRead = a.read === true;
         const bRead = b.read === true;
@@ -97,27 +96,24 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
 
     setIsMarkingAll(true);
     try {
-      // Busca TODAS as notificações não lidas no servidor, sem limite, para garantir a limpeza
+      // Limpeza profunda: busca todos os registros e limpa os pendentes
       const q = query(
         collection(db, 'notifications'),
-        where('userId', '==', user.uid),
-        where('read', '==', false)
+        where('userId', '==', user.uid)
       );
 
       const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      let count = 0;
 
-      if (snapshot.empty) {
-        // Se a busca filtrada falhar ou estiver vazia, tentamos limpar o que está na lista local
-        const batch = writeBatch(db);
-        notifications.forEach(n => {
-          if (!n.read) batch.update(doc(db, 'notifications', n.id), { read: true });
-        });
-        await batch.commit();
-      } else {
-        const batch = writeBatch(db);
-        snapshot.docs.forEach(d => {
+      snapshot.docs.forEach(d => {
+        if (d.data().read !== true) {
           batch.update(doc(db, 'notifications', d.id), { read: true });
-        });
+          count++;
+        }
+      });
+
+      if (count > 0) {
         await batch.commit();
       }
 
@@ -215,7 +211,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4" />
-                      Limpar {effectiveUnreadCount} Notificações (Forçar)
+                      Marcar {effectiveUnreadCount} como lidas
                     </>
                   )}
                 </button>
@@ -269,12 +265,27 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
                             {notif.createdAt?.toDate ? format(notif.createdAt.toDate(), "dd 'de' MMMM", { locale: ptBR }) : ''}
                           </span>
 
-                          {notif.incidentId && (
-                            <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${notif.read ? 'text-gray-300' : 'text-primary'}`}>
-                              Ver detalhes
-                              <ChevronRight className="w-3 h-3" />
-                            </div>
-                          )}
+                          <div className="flex items-center gap-3">
+                            {!notif.read && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateDoc(doc(db, 'notifications', notif.id), { read: true });
+                                }}
+                                className="p-1.5 bg-gray-100 hover:bg-primary/10 text-gray-400 hover:text-primary rounded-lg transition-colors group/btn"
+                                title="Marcar como lida"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {notif.incidentId && (
+                              <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${notif.read ? 'text-gray-300' : 'text-primary'}`}>
+                                Ver detalhes
+                                <ChevronRight className="w-3 h-3" />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

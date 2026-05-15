@@ -11,8 +11,10 @@ import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import UserManagement from './components/UserManagement';
 import ProfileModal from './components/ProfileModal';
 import NotificationModal from './components/NotificationModal';
-import { db, collection, query, onSnapshot, handleFirestoreError, OperationType, where, auth } from './firebase';
+import { db, collection, query, onSnapshot, handleFirestoreError, OperationType, where, auth, writeBatch, getDocs, doc } from './firebase';
 import { type Incident } from './types';
+import { Capacitor } from '@capacitor/core';
+import { Badge } from '@capawesome/capacitor-badge';
 import { syncOfflineIncidents } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, X, Menu, Bell, LogOut } from 'lucide-react';
@@ -80,6 +82,26 @@ const MainApp: React.FC = () => {
       unsubIncidents();
     };
   }, [user, loading, isAgent]);
+
+  const markAllNotificationsAsRead = async () => {
+    if (!user) return;
+    try {
+      const q = query(collection(db, 'notifications'), where('userId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      let count = 0;
+      snapshot.docs.forEach(d => {
+        if (d.data().read !== true) {
+          batch.update(doc(db, 'notifications', d.id), { read: true });
+          count++;
+        }
+      });
+      if (count > 0) await batch.commit();
+      if (Capacitor.isNativePlatform()) await Badge.set({ count: 0 });
+    } catch (e) {
+      console.error("Erro ao limpar via atalho:", e);
+    }
+  };
 
   const handleNavigate = (tab: string, filter?: string) => {
     setActiveTab(tab);
@@ -174,6 +196,10 @@ const MainApp: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsNotificationOpen(true)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              markAllNotificationsAsRead();
+            }}
             className="bg-white/10 p-2.5 rounded-xl relative active:scale-90 transition-transform"
           >
             <Bell className="w-6 h-6" />
