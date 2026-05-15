@@ -10,7 +10,8 @@ import {
   Clock, 
   CheckCircle, 
   ExternalLink, 
-  X
+  X,
+  Target
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -153,7 +154,7 @@ const MapView: React.FC<MapViewProps> = ({ incidents, onMarkerClick, focusIncide
   return (
     <div className="h-full w-full relative rounded-3xl overflow-hidden shadow-xl border border-white/20">
       <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
-        <RecenterMap center={center} zoom={focusIncident ? 18 : undefined} />
+        <RecenterMap center={center} zoom={focusIncident ? 18 : zoom} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -167,7 +168,25 @@ const MapView: React.FC<MapViewProps> = ({ incidents, onMarkerClick, focusIncide
           />
         ))}
       </MapContainer>
-      
+
+      {/* Botão Minha Localização */}
+      <button
+        onClick={() => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+              setCenter([pos.coords.latitude, pos.coords.longitude]);
+              setZoom(15);
+            }, (err) => {
+              console.error("Erro ao obter localização:", err);
+            }, { enableHighAccuracy: true });
+          }
+        }}
+        className="absolute top-4 right-4 z-[1000] bg-white p-3 rounded-full shadow-2xl hover:bg-gray-50 active:scale-90 transition-all border border-gray-100"
+        title="Minha Localização"
+      >
+        <Target className="w-6 h-6 text-primary" />
+      </button>
+
       <div className="absolute bottom-4 left-4 lg:bottom-6 lg:left-6 z-[1000] bg-white/90 backdrop-blur-md p-3 lg:p-4 rounded-2xl shadow-2xl border border-gray-100">
         <h5 className="text-[10px] lg:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 lg:mb-3">Legenda</h5>
         <div className="flex flex-col gap-2 lg:gap-2.5">

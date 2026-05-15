@@ -511,13 +511,18 @@ const IncidentForm: React.FC<IncidentFormProps> = ({ editIncident, onCancel }) =
           onClick={() => {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition((pos) => {
-                setFormData({ ...formData, location: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
-              });
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                handleMapClick(loc);
+              }, (err) => {
+                console.error("Erro ao obter localização:", err);
+                setErrorMessage("Não foi possível obter sua localização. Verifique se o GPS está ativado.");
+              }, { enableHighAccuracy: true });
             }
           }}
-          className="absolute bottom-40 right-4 z-[1000] bg-white p-2 rounded-full shadow-xl hover:bg-gray-50 transition-colors"
+          className="absolute bottom-40 right-4 z-[1000] bg-white p-3 rounded-full shadow-2xl hover:bg-gray-50 active:scale-90 transition-all border border-gray-100"
+          title="Minha Localização"
         >
-          <Target className="w-5 h-5 text-primary" />
+          <Target className="w-6 h-6 text-primary" />
         </button>
 
         <MapContainer 

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { db, collection, query, where, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from '../firebase';
+import { db, collection, query, where, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch, getDocs } from '../firebase';
+import { Capacitor } from '@capacitor/core';
+import { Badge } from '@capawesome/capacitor-badge';
 import { useAuth } from '../AuthProvider';
 import { X, Bell, MessageSquare, AlertTriangle, CheckCircle, Clock, Check, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,6 +12,7 @@ interface NotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigateToIncident?: (id: string) => void;
+  unreadCountFromApp?: number;
 }
 
 interface NotificationData {
@@ -21,19 +24,24 @@ interface NotificationData {
   incidentId?: string;
 }
 
-const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, onNavigateToIncident }) => {
+const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, onNavigateToIncident, unreadCountFromApp = 0 }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [localUnreadCount, setLocalUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!user || !isOpen) return;
 
+    if (Capacitor.isNativePlatform()) {
+      Badge.set({ count: 0 }).catch(console.error);
+    }
+
+    // Busca ampliada para encontrar notificações "perdidas"
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(20)
+      limit(200) // Aumentamos bem o limite para varrer o histórico
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -41,11 +49,28 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
         id: doc.id,
         ...doc.data()
       })) as NotificationData[];
+
+      // Ordenação: Não lidas (ou sem o campo read) no topo, depois por data
+      docs.sort((a, b) => {
+        const aRead = a.read === true;
+        const bRead = b.read === true;
+        if (aRead !== bRead) return aRead ? 1 : -1;
+
+        const timeA = a.createdAt?.toMillis?.() || 0;
+        const timeB = b.createdAt?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
+
       setNotifications(docs);
+      setLocalUnreadCount(docs.filter(n => n.read !== true).length);
+    }, (error) => {
+      console.error("Erro ao carregar notificações:", error);
     });
 
     return () => unsubscribe();
   }, [user, isOpen]);
+
+  const effectiveUnreadCount = Math.max(unreadCountFromApp, localUnreadCount);
 
   const markAsRead = async (notif: NotificationData) => {
     if (notif.read) {
@@ -68,19 +93,43 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
   };
 
   const markAllAsRead = async () => {
-    if (!user || notifications.filter(n => !n.read).length === 0) return;
+    if (!user) return;
 
     setIsMarkingAll(true);
     try {
-      const batch = writeBatch(db);
-      notifications.forEach(n => {
-        if (!n.read) {
-          batch.update(doc(db, 'notifications', n.id), { read: true });
-        }
-      });
-      await batch.commit();
+      // Busca TODAS as notificações não lidas no servidor, sem limite, para garantir a limpeza
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', user.uid),
+        where('read', '==', false)
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        // Se a busca filtrada falhar ou estiver vazia, tentamos limpar o que está na lista local
+        const batch = writeBatch(db);
+        notifications.forEach(n => {
+          if (!n.read) batch.update(doc(db, 'notifications', n.id), { read: true });
+        });
+        await batch.commit();
+      } else {
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(d => {
+          batch.update(doc(db, 'notifications', d.id), { read: true });
+        });
+        await batch.commit();
+      }
+
+      // Zera o badge nativo e limpa o estado local
+      if (Capacitor.isNativePlatform()) {
+        await Badge.set({ count: 0 });
+      }
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setLocalUnreadCount(0);
+
     } catch (e) {
-      console.error(e);
+      console.error("Erro crítico ao limpar notificações:", e);
     } finally {
       setIsMarkingAll(false);
     }
@@ -136,9 +185,9 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
                 <div className="flex items-center gap-4">
                   <div className="bg-primary/10 p-3 rounded-2xl text-primary relative">
                     <Bell className="w-6 h-6" />
-                    {unreadCount > 0 && (
+                    {effectiveUnreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">
-                        {unreadCount}
+                        {effectiveUnreadCount}
                       </span>
                     )}
                   </div>
@@ -155,18 +204,18 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
                 </button>
               </div>
 
-              {unreadCount > 0 && (
+              {effectiveUnreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
                   disabled={isMarkingAll}
-                  className="w-full py-3 bg-gray-50 hover:bg-gray-100 rounded-2xl text-xs font-bold text-gray-500 uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-gray-100 active:scale-[0.98]"
+                  className="w-full py-3 bg-orange-500 hover:bg-orange-600 rounded-2xl text-xs font-bold text-white uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-[0.98]"
                 >
                   {isMarkingAll ? (
-                    <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Check className="w-4 h-4" />
-                      Marcar todas como lidas
+                      <CheckCircle className="w-4 h-4" />
+                      Limpar {effectiveUnreadCount} Notificações (Forçar)
                     </>
                   )}
                 </button>

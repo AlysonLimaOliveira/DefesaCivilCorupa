@@ -45,13 +45,17 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (!user || loading) return;
 
-    // Monitoramento de Notificações Não Lidas
+    // Monitoramento de Notificações - Filtro em memória para máxima resiliência
     const qNotif = query(
       collection(db, 'notifications'),
-      where('userId', '==', user.uid),
-      where('read', '==', false)
+      where('userId', '==', user.uid)
     );
-    const unsubNotif = onSnapshot(qNotif, (snapshot) => setUnreadNotifications(snapshot.size));
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+      const unread = snapshot.docs.filter(d => !d.data().read).length;
+      setUnreadNotifications(unread);
+    }, (err) => {
+      console.error("Erro no contador de notificações:", err);
+    });
 
     // Monitoramento de Incidentes
     const qIncidents = isAgent
@@ -206,6 +210,7 @@ const MainApp: React.FC = () => {
         <NotificationModal
           isOpen={isNotificationOpen}
           onClose={() => setIsNotificationOpen(false)}
+          unreadCountFromApp={unreadNotifications}
           onNavigateToIncident={(id) => {
             setSearchQuery(id);
             setActiveTab('incidents');

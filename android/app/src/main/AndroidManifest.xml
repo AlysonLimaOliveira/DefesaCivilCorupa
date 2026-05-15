@@ -55,8 +55,8 @@
         </provider>
 
         <!-- Push Notification Icon and Color -->
-        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/ic_launcher" />
-        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/colorPrimary" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_name" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/orange_defesa_civil" />
     </application>
 
 </manifest>
