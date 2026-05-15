@@ -98,8 +98,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
           onClick={() => setIsProfileOpen(true)}
           className="w-full flex items-center gap-3 px-4 py-3 mb-4 hover:bg-white/5 rounded-2xl transition-all group"
         >
-          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-            {profile?.displayName?.[0] || profile?.email?.[0]?.toUpperCase()}
+          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform overflow-hidden">
+            {profile?.photoURL ? (
+              <img
+                src={profile.photoURL}
+                alt="Profile"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              profile?.displayName?.[0] || profile?.email?.[0]?.toUpperCase()
+            )}
           </div>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-sm font-medium truncate group-hover:text-white transition-colors">

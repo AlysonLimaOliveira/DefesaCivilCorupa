@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { Shield, AlertCircle, Phone, Mail, Lock, UserPlus, MessageCircle } from 'lucide-react';
+import { Shield, AlertCircle, Phone, Mail, Lock, UserPlus, MessageCircle, Eye, EyeOff } from 'lucide-react';
 import { LOGO_URL } from '../constants';
 import { db, doc, setDoc } from '../firebase';
 
@@ -15,6 +15,8 @@ const Login: React.FC = () => {
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,13 +92,20 @@ const Login: React.FC = () => {
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary/20 py-3.5 pl-12 pr-4 rounded-2xl outline-none font-medium text-gray-700"
+                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary/20 py-3.5 pl-12 pr-12 rounded-2xl outline-none font-medium text-gray-700"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
 
             {/* CAMPOS EXTRAS DE REGISTRO */}
@@ -105,13 +114,20 @@ const Login: React.FC = () => {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirmar Senha"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-primary/20 py-3.5 pl-12 pr-4 rounded-2xl outline-none font-medium text-gray-700"
+                    className="w-full bg-gray-50 border-2 border-transparent focus:border-primary/20 py-3.5 pl-12 pr-12 rounded-2xl outline-none font-medium text-gray-700"
                     required={isRegistering}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
 
                 <div className="relative">

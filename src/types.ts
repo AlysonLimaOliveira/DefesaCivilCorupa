@@ -28,6 +28,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName?: string;
+  photoURL?: string;
   cpf?: string;
   phone?: string;
   role: "admin" | "operator";

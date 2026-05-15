@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, type User, type DocumentSnapshot } from './firebase';
+import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, onSnapshot, type User, type DocumentSnapshot } from './firebase';
 import { type UserProfile } from './types';
 
 interface AuthContextType {
@@ -26,42 +26,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        try {
-          console.log("Fetching profile for UID:", currentUser.uid);
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-            console.log("Profile found:", userDoc.data());
-            setProfile(userDoc.data() as UserProfile);
+        // Monitoramento em tempo real do perfil no Firestore
+        const userDocRef = doc(db, 'users', currentUser.uid);
+
+        const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data() as UserProfile;
+            // Se o perfil existe mas não tem foto e o Auth tem, atualiza o Firestore
+            if (!data.photoURL && currentUser.photoURL) {
+              updateDoc(userDocRef, { photoURL: currentUser.photoURL });
+            }
+            setProfile(data);
           } else {
-            console.log("Profile not found, creating default...");
-            // Create default profile for new users
+            // Se o perfil não existe, cria o inicial
             const newProfile: UserProfile = {
               uid: currentUser.uid,
               email: currentUser.email || '',
               displayName: currentUser.displayName || '',
+              photoURL: currentUser.photoURL || '',
               role: currentUser.email === 'alyson_apps@hotmail.com' ? 'admin' : 'operator',
             };
-            await setDoc(doc(db, 'users', currentUser.uid), newProfile);
-            setProfile(newProfile);
-            console.log("Default profile created.");
+            setDoc(userDocRef, newProfile);
           }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-          if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-          }
-        }
+          setLoading(false);
+        }, (error) => {
+          console.error("Erro no listener de perfil:", error);
+          setLoading(false);
+        });
+
+        return () => unsubProfile();
       } else {
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const isAdmin = profile?.role === 'admin' || user?.email === 'alyson_apps@hotmail.com';
