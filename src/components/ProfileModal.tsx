@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../AuthProvider';
 import { db, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
 import { X, User, Mail, Shield, Save, Loader2, Image as ImageIcon } from 'lucide-react';
@@ -15,6 +15,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sincroniza os campos quando o perfil carregar
   useEffect(() => {
@@ -23,6 +24,21 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       setPhotoURL(profile.photoURL || '');
     }
   }, [profile, isOpen]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // Limite de 1MB para Firestore
+        alert("A imagem é muito grande. Escolha uma foto com menos de 1MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoURL(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -60,20 +76,34 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                 <X className="w-6 h-6" />
               </button>
               <div className="flex flex-col items-center mt-4">
-                <div className="w-28 h-28 rounded-full bg-accent border-4 border-white/20 flex items-center justify-center text-4xl font-bold mb-6 shadow-2xl overflow-hidden relative">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-28 h-28 rounded-full bg-accent border-4 border-white/20 flex items-center justify-center text-4xl font-bold mb-6 shadow-2xl overflow-hidden relative cursor-pointer group hover:scale-105 transition-transform"
+                >
                   {photoURL ? (
                     <img
                       src={photoURL}
                       alt="Profile"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:opacity-40 transition-opacity"
                       referrerPolicy="no-referrer"
                       onError={() => setPhotoURL('')}
                     />
                   ) : (
-                    <span className="text-white">
+                    <span className="text-white group-hover:opacity-40 transition-opacity">
                       {displayName?.[0] || profile?.email?.[0]?.toUpperCase()}
                     </span>
                   )}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/20 backdrop-blur-[2px]">
+                    <ImageIcon className="w-8 h-8 text-white mb-1" />
+                    <span className="text-[10px] font-black uppercase tracking-tighter">Trocar Foto</span>
+                  </div>
                 </div>
                 <h2 className="text-2xl font-bold text-center px-4">
                   {profile?.displayName || user?.displayName || 'Usuário'}
@@ -97,23 +127,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                     className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 focus:bg-white focus:border-primary transition-all text-gray-900"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">URL da Foto de Perfil</label>
-                <div className="relative group">
-                  <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="text"
-                    value={photoURL}
-                    onChange={(e) => setPhotoURL(e.target.value)}
-                    placeholder="https://link-da-sua-foto.com/foto.jpg"
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 focus:bg-white focus:border-primary transition-all text-gray-900"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 ml-1 font-medium">
-                  Dica: Você pode usar links do Google Drive, Imgur ou redes sociais.
-                </p>
               </div>
 
               <div className="space-y-2">
