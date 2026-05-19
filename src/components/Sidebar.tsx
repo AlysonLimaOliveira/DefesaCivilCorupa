@@ -98,13 +98,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
           onClick={() => setIsProfileOpen(true)}
           className="w-full flex items-center gap-3 px-4 py-3 mb-4 hover:bg-white/5 rounded-2xl transition-all group"
         >
-          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform overflow-hidden bg-primary/20">
             {profile?.photoURL ? (
               <img
                 src={profile.photoURL}
                 alt="Profile"
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center font-bold text-white text-sm bg-primary/20">${profile?.displayName?.[0] || 'U'}</div>`;
+                }}
               />
             ) : (
               profile?.displayName?.[0] || profile?.email?.[0]?.toUpperCase()

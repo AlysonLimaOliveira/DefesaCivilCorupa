@@ -1,12 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area } from 'recharts';
-import { AlertTriangle, Clock, CheckCircle, Activity, TrendingUp, MapPin, ChevronRight, Plus, Map as MapIcon, Users, FileText } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, Activity, TrendingUp, MapPin, ChevronRight, Plus, Map as MapIcon, Users, FileText, Send } from 'lucide-react';
+import { Network } from '@capacitor/network';
 import { type Incident, type UserProfile, type IncidentCategory } from '../types';
 import { getCategoryIcon } from '../lib/incidentIcons';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { notifyAllUsers } from '../services/notificationService';
 
 interface DashboardProps {
   incidents: Incident[];
@@ -15,6 +17,41 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ incidents, profile, onNavigate }) => {
+  const [alertMessage, setAlertMessage] = useState('');
+  const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    // Inicializar status
+    Network.getStatus().then(status => {
+      setIsOnline(status.connected);
+    });
+
+    // Listener para mudanças nativas
+    const handler = Network.addListener('networkStatusChange', status => {
+      setIsOnline(status.connected);
+    });
+
+    return () => {
+      handler.then(h => h.remove());
+    };
+  }, []);
+
+  const handleSendAlert = async () => {
+    if (!alertMessage.trim()) return;
+
+    setIsSendingAlert(true);
+    const success = await notifyAllUsers('ALERTA DA DEFESA CIVIL', alertMessage);
+    setIsSendingAlert(false);
+
+    if (success) {
+      setAlertMessage('');
+      alert('Alerta enviado com sucesso para todos os usuários!');
+    } else {
+      alert('Erro ao enviar alerta.');
+    }
+  };
+
   const stats = useMemo(() => {
     const s = {
       total: incidents.length,
@@ -75,12 +112,15 @@ const Dashboard: React.FC<DashboardProps> = ({ incidents, profile, onNavigate })
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <span className="px-3 py-1 bg-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-widest rounded-full">
-              Painel de Controle v3.0
-            </span>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              SISTEMA ONLINE
+            <div className={cn(
+              "flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest transition-colors",
+              isOnline ? "text-emerald-500 bg-emerald-50" : "text-red-500 bg-red-50"
+            )}>
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full transition-colors",
+                isOnline ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+              )} />
+              {isOnline ? 'Sistema Online' : 'Modo Offline'}
             </div>
           </div>
           <h2 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
@@ -257,9 +297,28 @@ const Dashboard: React.FC<DashboardProps> = ({ incidents, profile, onNavigate })
             <div className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-[32px] p-6 text-white relative overflow-hidden shadow-xl shadow-orange-100">
               <div className="relative z-10">
                 <h4 className="text-lg font-black mb-1 leading-tight">Canal de Alertas</h4>
-                <p className="text-white/80 text-xs font-medium mb-4">Envie notificações em massa para todos os agentes em campo.</p>
-                <button className="w-full py-3 bg-white text-orange-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform">
-                  Emitir Alerta Geral
+                <p className="text-white/80 text-xs font-medium mb-4">Envie notificações em massa para todos os usuários do App.</p>
+
+                <textarea
+                  value={alertMessage}
+                  onChange={(e) => setAlertMessage(e.target.value)}
+                  placeholder="Digite a mensagem do alerta geral..."
+                  className="w-full h-24 p-3 bg-white/10 border border-white/20 rounded-2xl text-xs text-white placeholder:text-white/40 outline-none focus:bg-white/20 transition-all resize-none mb-3"
+                />
+
+                <button
+                  onClick={handleSendAlert}
+                  disabled={isSendingAlert || !alertMessage.trim()}
+                  className="w-full py-3 bg-white text-orange-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+                >
+                  {isSendingAlert ? (
+                    <div className="w-4 h-4 border-2 border-orange-600/30 border-t-orange-600 rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      Emitir Alerta Geral
+                    </>
+                  )}
                 </button>
               </div>
               <Activity className="absolute -bottom-4 -right-4 w-24 h-24 text-white/10" />

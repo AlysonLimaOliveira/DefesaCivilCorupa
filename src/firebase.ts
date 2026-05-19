@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   type User,
   setPersistence,
   indexedDBLocalPersistence,

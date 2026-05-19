@@ -71,28 +71,58 @@ const NotificationManager: React.FC = () => {
       return;
     }
 
+    // Solicitar também permissão para Notificações Locais (necessário para Android 13+)
+    await LocalNotifications.requestPermissions();
+
     try {
       await PushNotifications.register();
+
+      // Configurar para mostrar a notificação mesmo com o app aberto
+      // Algumas versões do Android/Capacitor podem não implementar isso ou lançar erro
+      try {
+        await PushNotifications.setPresentationOptions({
+          presentationOptions: ['badge', 'sound', 'alert'],
+        });
+      } catch (presentationError) {
+        console.warn('PushNotifications.setPresentationOptions não disponível:', presentationError);
+      }
     } catch (e) {
       console.error('Falha ao registrar para notificações push:', e);
-      return;
     }
 
     // Create Notification Channel for Android (Heads-up pop-up)
     if (Capacitor.getPlatform() === 'android') {
       try {
-        await PushNotifications.createChannel({
-          id: 'alerts',
-          name: 'Alertas Defesa Civil',
-          description: 'Notificações importantes de emergência',
-          importance: 5, // High importance for heads-up
+        const channel = {
+          id: 'defesa_civil_alerts',
+          name: 'Alertas Urgentes',
+          description: 'Notificações de emergência da Defesa Civil',
+          importance: 5,
           visibility: 1,
           vibration: true,
-        });
+          sound: 'alert_sound.mp3' // Opcional: se você tiver esse arquivo em res/raw
+        };
+        await PushNotifications.createChannel(channel);
+        await LocalNotifications.createChannel(channel);
       } catch (e) {
         console.error('Erro ao criar canal de notificação:', e);
       }
     }
+
+    // Listener para clique na notificação local
+    LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction) => {
+      console.log('Action performed on local notification:', notificationAction);
+      const { notification } = notificationAction;
+
+      // Dispara um evento customizado para o App.tsx capturar
+      window.dispatchEvent(new CustomEvent('open-emergency-popup', {
+        detail: {
+          title: notification.title,
+          message: notification.body,
+          incidentId: notification.extra?.incidentId
+        }
+      }));
+    });
 
     PushNotifications.addListener('registration', async (token) => {
       console.log('Push registration success, token: ' + token.value);
@@ -167,10 +197,8 @@ const NotificationManager: React.FC = () => {
             extra: {
               incidentId: notif.incidentId
             },
-            schedule: { at: new Date(Date.now() + 100) },
-            channelId: 'alerts',
-            smallIcon: 'ic_stat_name', // Usando o ícone que realmente existe no Android
-            largeIcon: 'res://ic_launcher', // Ícone grande que aparece na notificação
+            channelId: 'defesa_civil_alerts',
+            // O ícone agora será pego automaticamente do capacitor.config.json
           }
         ]
       });

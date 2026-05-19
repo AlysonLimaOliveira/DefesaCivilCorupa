@@ -247,15 +247,15 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, 
                         {getIcon(notif.title, notif.read)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <h4 className={`text-sm font-black tracking-tight ${notif.read ? 'text-gray-600' : 'text-primary'}`}>
+                        <div className="flex items-center justify-between mb-1.5 gap-2">
+                          <h4 className={`text-sm font-black tracking-tight truncate ${notif.read ? 'text-gray-600' : 'text-primary'}`}>
                             {notif.title}
                           </h4>
-                          <span className="text-[9px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
+                          <span className="text-[9px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg uppercase whitespace-nowrap shrink-0">
                             {notif.createdAt?.toDate ? format(notif.createdAt.toDate(), "HH:mm", { locale: ptBR }) : 'Agora'}
                           </span>
                         </div>
-                        <p className={`text-sm leading-relaxed ${notif.read ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
+                        <p className={`text-sm leading-relaxed break-words line-clamp-3 ${notif.read ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
                           {notif.message}
                         </p>
 

@@ -93,7 +93,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                       alt="Profile"
                       className="w-full h-full object-cover group-hover:opacity-40 transition-opacity"
                       referrerPolicy="no-referrer"
-                      onError={() => setPhotoURL('')}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        setPhotoURL(''); // Reset to show initials if image fails
+                      }}
                     />
                   ) : (
                     <span className="text-white group-hover:opacity-40 transition-opacity">

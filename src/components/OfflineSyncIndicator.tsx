@@ -147,8 +147,17 @@ export const OfflineSyncIndicator: React.FC = () => {
                   </div>
                 )}
 
-                <div className="text-xs text-gray-500 pt-2 border-t">
-                  As ocorrências serão automaticamente sincronizadas com o servidor assim que possível.
+                <div className="text-xs text-gray-500 pt-2 border-t flex flex-col gap-2">
+                  <p>As ocorrências serão automaticamente sincronizadas com o servidor assim que possível.</p>
+                  <button
+                    onClick={() => {
+                      syncOfflineIncidents(true);
+                      setShowDetails(false);
+                    }}
+                    className="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 active:scale-95 transition-all"
+                  >
+                    Tentar Sincronizar Agora
+                  </button>
                 </div>
               </div>
             </motion.div>

@@ -87,6 +87,11 @@ export const removeOfflineIncident = (id: string) => {
   localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
 };
 
+export const clearSyncedIncidents = () => {
+  const queue = getOfflineQueue().filter(i => i.status !== 'synced');
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+};
+
 export const syncOfflineIncidents = async (forceSync = false) => {
   if (syncInProgress && !forceSync) {
     console.log('[Offline] Sincronização já em progresso');
@@ -97,7 +102,8 @@ export const syncOfflineIncidents = async (forceSync = false) => {
   const pendingIncidents = queue.filter(i => i.status === 'pending' || i.status === 'error');
   
   if (pendingIncidents.length === 0) {
-    console.log('[Offline] Nenhum incidente para sincronizar');
+    console.log('[Offline] Nenhum incidente pendente. Limpando fila...');
+    clearSyncedIncidents();
     return;
   }
 

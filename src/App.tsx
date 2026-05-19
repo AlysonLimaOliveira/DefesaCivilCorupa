@@ -11,13 +11,14 @@ import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import UserManagement from './components/UserManagement';
 import ProfileModal from './components/ProfileModal';
 import NotificationModal from './components/NotificationModal';
+import AlertPopup from './components/AlertPopup';
 const MapView = React.lazy(() => import('./components/MapView'));
 
 import { db, collection, query, onSnapshot, handleFirestoreError, OperationType, where, auth, writeBatch, getDocs, doc } from './firebase';
 import { type Incident } from './types';
 import { Capacitor } from '@capacitor/core';
 import { Badge } from '@capawesome/capacitor-badge';
-import { syncOfflineIncidents } from './services/offlineService';
+import { syncOfflineIncidents, getOfflineQueue } from './services/offlineService';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, X, Menu, Bell, LogOut } from 'lucide-react';
 import { LOGO_URL } from './constants';
@@ -35,6 +36,22 @@ const MainApp: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [emergencyPopup, setEmergencyPopup] = useState<{ isOpen: boolean; data: any }>({
+    isOpen: false,
+    data: null
+  });
+
+  useEffect(() => {
+    const handleEmergencyEvent = (e: any) => {
+      setEmergencyPopup({
+        isOpen: true,
+        data: e.detail
+      });
+    };
+
+    window.addEventListener('open-emergency-popup', handleEmergencyEvent);
+    return () => window.removeEventListener('open-emergency-popup', handleEmergencyEvent);
+  }, []);
 
   useEffect(() => {
     if (navigator.onLine) syncOfflineIncidents();
@@ -67,13 +84,26 @@ const MainApp: React.FC = () => {
       : query(collection(db, 'incidents'), where('reporterUid', '==', user.uid));
 
     const unsubIncidents = onSnapshot(qIncidents, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Incident[];
-      data.sort((a, b) => {
+      const serverData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Incident[];
+
+      // Mesclar com itens offline pendentes
+      const offlineQueue = getOfflineQueue().filter(i => i.status !== 'synced');
+      const offlineIncidents = offlineQueue.map(i => ({
+        id: i.id,
+        ...i.data,
+        status: 'Pendente',
+        isOfflinePending: true,
+        createdAt: { toMillis: () => i.timestamp, toDate: () => new Date(i.timestamp) }
+      })) as Incident[];
+
+      const combinedData = [...offlineIncidents, ...serverData];
+
+      combinedData.sort((a, b) => {
         const timeA = a.createdAt?.toMillis?.() || 0;
         const timeB = b.createdAt?.toMillis?.() || 0;
         return timeB - timeA;
       });
-      setIncidents(data);
+      setIncidents(combinedData);
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'incidents');
       setError("Erro ao sincronizar dados.");
@@ -223,10 +253,18 @@ const MainApp: React.FC = () => {
 
           <div
             onClick={() => setIsProfileOpen(true)}
-            className="w-11 h-11 rounded-full border-2 border-white/20 overflow-hidden bg-gray-200 cursor-pointer active:scale-90 transition-transform"
+            className="w-11 h-11 rounded-full border-2 border-white/20 overflow-hidden bg-primary/30 cursor-pointer active:scale-90 transition-transform flex items-center justify-center"
           >
             {profile?.photoURL ? (
-              <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+              <img
+                src={profile.photoURL}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center font-bold text-white text-sm bg-primary/20">${profile?.displayName?.[0] || 'U'}</div>`;
+                }}
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center font-bold text-white text-sm bg-primary/20">
                 {profile?.displayName?.[0] || 'U'}
@@ -251,6 +289,17 @@ const MainApp: React.FC = () => {
           onNavigateToIncident={(id) => {
             setSearchQuery(id);
             setActiveTab('incidents');
+          }}
+        />
+
+        <AlertPopup
+          isOpen={emergencyPopup.isOpen}
+          data={emergencyPopup.data}
+          onClose={() => setEmergencyPopup(prev => ({ ...prev, isOpen: false }))}
+          onViewDetails={(id) => {
+            setSearchQuery(id);
+            setActiveTab('incidents');
+            setEmergencyPopup(prev => ({ ...prev, isOpen: false }));
           }}
         />
 

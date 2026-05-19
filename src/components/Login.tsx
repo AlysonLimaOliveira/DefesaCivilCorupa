@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { Shield, AlertCircle, Phone, Mail, Lock, UserPlus, MessageCircle, Eye, EyeOff } from 'lucide-react';
+import { auth, db, doc, setDoc } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { Shield, AlertCircle, Phone, Mail, Lock, UserPlus, MessageCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { LOGO_URL } from '../constants';
-import { db, doc, setDoc } from '../firebase';
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -17,6 +16,27 @@ const Login: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Por favor, digite seu e-mail para recuperar a senha.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSent(true);
+      setTimeout(() => setResetSent(false), 5000);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/user-not-found') setError('E-mail não encontrado.');
+      else setError('Erro ao enviar e-mail de recuperação.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +128,18 @@ const Login: React.FC = () => {
               </button>
             </div>
 
+            {!isRegistering && (
+              <div className="flex justify-end px-2">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[10px] font-bold text-gray-400 hover:text-primary uppercase tracking-wider"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+
             {/* CAMPOS EXTRAS DE REGISTRO */}
             {isRegistering && (
               <div className="space-y-4 pt-2 border-t border-gray-100 mt-4">
@@ -192,6 +224,13 @@ const Login: React.FC = () => {
               <div className="bg-danger/10 border border-danger/20 p-3 rounded-2xl flex items-center gap-3 text-danger text-[11px] font-bold">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <p>{error}</p>
+              </div>
+            )}
+
+            {resetSent && (
+              <div className="bg-success/10 border border-success/20 p-3 rounded-2xl flex items-center gap-3 text-success text-[11px] font-bold">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <p>E-mail de recuperação enviado com sucesso!</p>
               </div>
             )}
           </form>
